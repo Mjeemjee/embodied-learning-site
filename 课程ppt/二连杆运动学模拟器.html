@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>二连杆运动学正解模拟器 (修正版)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .simulator-container {
+            display: flex;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #d9d9d9;
+            width: 1200px;
+            height: 720px;
+        }
+
+        .control-panel {
+            width: 420px;
+            padding: 25px;
+            background-color: #fafafa;
+            border-right: 1px solid #e8e8e8;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .canvas-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+        }
+
+        canvas {
+            border: 1px solid #dcdcdc;
+            background-color: #fdfdfd;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            color: #003366;
+            margin: 0;
+            padding: 0;
+        }
+        
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #005a9e;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 1.3em;
+            margin-top: 20px;
+            color: #333;
+        }
+        
+        h3 {
+            font-size: 1.2em;
+            margin-top: 25px;
+            color: #005a9e;
+            border-top: 1px solid #e8e8e8;
+            padding-top: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .value-display {
+            font-weight: bold;
+            color: #c82333;
+            margin-left: 8px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        .results-area {
+            font-family: 'Cambria', 'Times New Roman', Times, serif;
+            background-color: #e9f5ff;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 1.05em;
+            line-height: 1.7;
+            border: 1px solid #b0d1f2;
+        }
+        
+        .results-area .formula {
+            font-weight: bold;
+        }
+        .results-area .term {
+             font-style: italic;
+             color: #555;
+        }
+        .results-area .value {
+             font-weight: bold;
+             color: #003366;
+        }
+        .results-area .final-value {
+             background-color: #fff;
+             padding: 2px 6px;
+             border-radius: 4px;
+             font-family: 'Courier New', Courier, monospace;
+        }
+        .contribution {
+            padding-left: 15px;
+            border-left: 2px solid;
+            margin-bottom: 10px;
+        }
+        .link1-color { color: #005a9e; border-color: #005a9e; }
+        .link2-color { color: #c82333; border-color: #c82333; }
+    </style>
+<link rel="stylesheet" href="./simulator-common.css?v=4">
+</head>
+<body class="sim-twoLink" data-simulator="twoLink">
+
+    <div class="simulator-container">
+        <div class="control-panel">
+            <h1>二连杆运动学模拟器</h1>
+            
+            <h2>连杆 1 参数</h2>
+            <div class="control-group">
+                <label for="L1">长度 (L₁): <span id="L1Value" class="value-display">150</span></label>
+                <input type="range" id="L1" min="50" max="250" value="150">
+            </div>
+            <div class="control-group">
+                <label for="theta1">角度 (θ₁): <span id="theta1Value" class="value-display">45</span> °</label>
+                <input type="range" id="theta1" min="-180" max="180" value="45">
+            </div>
+
+            <h2>连杆 2 参数</h2>
+            <div class="control-group">
+                <label for="L2">长度 (L₂): <span id="L2Value" class="value-display">120</span></label>
+                <input type="range" id="L2" min="50" max="250" value="120">
+            </div>
+            <div class="control-group">
+                <label for="theta2">角度 (θ₂): <span id="theta2Value" class="value-display">30</span> °</label>
+                <input type="range" id="theta2" min="-180" max="180" value="30">
+            </div>
+            
+            <h3>实时递推计算结果</h3>
+            <div class="results-area">
+                <div class="formula">X₂ = <span class="term">X₁</span> + <span class="term">ΔX</span></div>
+                <div class="contribution link1-color">
+                    <span class="term">X₁ (来自L₁)</span> = L₁⋅cos(θ₁)<br>
+                    = <span id="calcX1" class="value">106.07</span>
+                </div>
+                <div class="contribution link2-color">
+                    <span class="term">ΔX (来自L₂)</span> = L₂⋅cos(θ₁+θ₂)<br>
+                    = <span id="calcDeltaX" class="value">31.06</span>
+                </div>
+                <div>最终 X₂: <span id="resultX" class="final-value">137.13</span></div>
+                <hr style="border:0; border-top: 1px solid #ccc; margin:10px 0">
+
+                <div class="formula">Y₂ = <span class="term">Y₁</span> + <span class="term">ΔY</span></div>
+                <div class="contribution link1-color">
+                    <span class="term">Y₁ (来自L₁)</span> = L₁⋅sin(θ₁)<br>
+                    = <span id="calcY1" class="value">106.07</span>
+                </div>
+                <div class="contribution link2-color">
+                    <span class="term">ΔY (来自L₂)</span> = L₂⋅sin(θ₁+θ₂)<br>
+                    = <span id="calcDeltaY" class="value">115.91</span>
+                </div>
+                 <div>最终 Y₂: <span id="resultY" class="final-value">221.98</span></div>
+            </div>
+            
+        </div>
+        <div class="canvas-container">
+            <canvas id="simulatorCanvas" width="720" height="720"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const L1Slider = document.getElementById('L1');
+        const theta1Slider = document.getElementById('theta1');
+        const L2Slider = document.getElementById('L2');
+        const theta2Slider = document.getElementById('theta2');
+        const L1ValueSpan = document.getElementById('L1Value');
+        const theta1ValueSpan = document.getElementById('theta1Value');
+        const L2ValueSpan = document.getElementById('L2Value');
+        const theta2ValueSpan = document.getElementById('theta2Value');
+        
+        const calcX1Span = document.getElementById('calcX1');
+        const calcDeltaXSpan = document.getElementById('calcDeltaX');
+        const resultXSpan = document.getElementById('resultX');
+        const calcY1Span = document.getElementById('calcY1');
+        const calcDeltaYSpan = document.getElementById('calcDeltaY');
+        const resultYSpan = document.getElementById('resultY');
+        
+        const canvas = document.getElementById('simulatorCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function updateSimulator() {
+            // 1. Get input values
+            const L1 = parseFloat(L1Slider.value);
+            const theta1_deg = parseFloat(theta1Slider.value);
+            const L2 = parseFloat(L2Slider.value);
+            const theta2_deg = parseFloat(theta2Slider.value);
+            
+            // 2. Convert angles to radians
+            const theta1_rad = theta1_deg * Math.PI / 180;
+            const theta2_rad = theta2_deg * Math.PI / 180;
+            
+            // 3. Forward Kinematics Calculation (Step-by-step)
+            const X1 = L1 * Math.cos(theta1_rad);
+            const Y1 = L1 * Math.sin(theta1_rad);
+            const DeltaX = L2 * Math.cos(theta1_rad + theta2_rad);
+            const DeltaY = L2 * Math.sin(theta1_rad + theta2_rad);
+            const X2 = X1 + DeltaX;
+            const Y2 = Y1 + DeltaY;
+            
+            // 4. Update UI Displays
+            L1ValueSpan.textContent = L1.toFixed(0);
+            theta1ValueSpan.textContent = theta1_deg.toFixed(0);
+            L2ValueSpan.textContent = L2.toFixed(0);
+            theta2ValueSpan.textContent = theta2_deg.toFixed(0);
+            
+            calcX1Span.textContent = X1.toFixed(2);
+            calcDeltaXSpan.textContent = DeltaX.toFixed(2);
+            resultXSpan.textContent = X2.toFixed(2);
+
+            calcY1Span.textContent = Y1.toFixed(2);
+            calcDeltaYSpan.textContent = DeltaY.toFixed(2);
+            resultYSpan.textContent = Y2.toFixed(2);
+            
+            // 5. Redraw the canvas
+            drawCanvas({L1, theta1_rad, L2, theta2_rad}, {X1, Y1, X2, Y2});
+        }
+
+        function drawCanvas(params, coords) {
+            const { L1, theta1_rad, L2, theta2_rad } = params;
+            const { X1, Y1, X2, Y2 } = coords;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(1, -1);
+            
+            drawGrid();
+            drawAxes();
+            
+            // Draw link 1 extension line
+            ctx.save();
+            ctx.translate(X1, Y1);
+            ctx.rotate(theta1_rad);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(L2 + 30, 0);
+            ctx.strokeStyle = 'rgba(0, 90, 158, 0.3)';
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+
+            // Draw link 1 (Blue)
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(X1, Y1);
+            ctx.strokeStyle = '#005a9e'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke();
+
+            // Draw link 2 (Red)
+            ctx.beginPath(); ctx.moveTo(X1, Y1); ctx.lineTo(X2, Y2);
+            ctx.strokeStyle = '#c82333'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke();
+
+            // Draw joints
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, 2*Math.PI); ctx.fillStyle = '#003366'; ctx.fill();
+            ctx.beginPath(); ctx.arc(X1, Y1, 10, 0, 2*Math.PI); ctx.fillStyle = '#003366'; ctx.fill();
+            ctx.beginPath(); ctx.arc(X2, Y2, 10, 0, 2*Math.PI); ctx.fillStyle = '#a31e1e'; ctx.fill();
+            
+            // Draw angle arcs
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(0, 90, 158, 0.7)'; ctx.lineWidth = 1.5;
+            ctx.arc(0, 0, 40, 0, theta1_rad, theta1_rad < 0); ctx.stroke();
+
+            ctx.save();
+            ctx.translate(X1, Y1); ctx.rotate(theta1_rad);
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(200, 35, 51, 0.7)';
+            ctx.arc(0, 0, 40, 0, theta2_rad, theta2_rad < 0); ctx.stroke();
+            ctx.restore();
+
+            // Draw local frame {1} at P1
+            ctx.save();
+            ctx.translate(X1, Y1); ctx.rotate(theta1_rad);
+            ctx.lineWidth = 1.5;
+            // X' axis
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(30,0); ctx.strokeStyle = "green"; ctx.stroke();
+            // Y' axis
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,30); ctx.strokeStyle = "purple"; ctx.stroke();
+            ctx.restore();
+
+            // Restore the main state before drawing labels
+            ctx.restore();
+
+            // Draw labels using the corrected logic
+            drawLabels(centerX, centerY, params, coords);
+        }
+
+        // ===============================================
+        // == CORRECTED LABEL DRAWING LOGIC STARTS HERE ==
+        // ===============================================
+        function drawLabels(cx, cy, params, coords) {
+            const { L1, theta1_rad, L2, theta2_rad } = params;
+            const { X1, Y1, X2, Y2 } = coords;
+            
+            ctx.save();
+            ctx.font = 'bold 16px Arial';
+
+            // --- Label for θ₁ ---
+            ctx.fillStyle = '#005a9e';
+            const theta1_label_angle = theta1_rad / 2;
+            const r1 = 50; // radius for label
+            ctx.fillText(`θ₁`, 
+                cx + r1 * Math.cos(theta1_label_angle), 
+                cy - r1 * Math.sin(theta1_label_angle));
+
+            // --- Label for L₁ ---
+            ctx.save();
+            ctx.translate(cx + X1 / 2, cy - Y1 / 2); // Move to midpoint of L1
+            ctx.rotate(-theta1_rad);
+            ctx.fillStyle = '#005a9e';
+            ctx.fillText(`L₁`, -15, -10); // Offset from the link
+            ctx.restore();
+
+            // --- Label for θ₂ ---
+            ctx.fillStyle = '#c82333';
+            const theta2_label_angle = theta1_rad + (theta2_rad / 2);
+            const r2 = 50;
+            ctx.fillText(`θ₂`, 
+                cx + X1 + r2 * Math.cos(theta2_label_angle), 
+                cy - (Y1 + r2 * Math.sin(theta2_label_angle)));
+            
+            // --- Label for L₂ ---
+            ctx.save();
+            // Move to midpoint of L2
+            ctx.translate(cx + (X1 + X2) / 2, cy - (Y1 + Y2) / 2); 
+            ctx.rotate(-(theta1_rad + theta2_rad));
+            ctx.fillStyle = '#c82333';
+            ctx.fillText(`L₂`, -15, -10); // Offset from the link
+            ctx.restore();
+            
+            ctx.restore(); // Restore to default state
+        }
+        
+        function drawGrid() {
+            ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 0.5; const step = 50;
+            for (let x = step; x < canvas.width / 2; x += step) {
+                ctx.beginPath(); ctx.moveTo(x, -canvas.height / 2); ctx.lineTo(x, canvas.height / 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-x, -canvas.height / 2); ctx.lineTo(-x, canvas.height / 2); ctx.stroke();
+            }
+            for (let y = step; y < canvas.height / 2; y += step) {
+                ctx.beginPath(); ctx.moveTo(-canvas.width / 2, y); ctx.lineTo(canvas.width / 2, y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-canvas.width / 2, -y); ctx.lineTo(canvas.width / 2, -y); ctx.stroke();
+            }
+        }
+        
+        function drawAxes() {
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(-canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, -canvas.height / 2); ctx.lineTo(0, canvas.height / 2); ctx.stroke();
+            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#333'; ctx.font = 'bold 16px Arial';
+            ctx.fillText('X', canvas.width - 20, canvas.height / 2 + 20); ctx.fillText('Y', canvas.width / 2 + 10, 20);
+            ctx.restore();
+        }
+
+        // Event Listeners
+        [L1Slider, theta1Slider, L2Slider, theta2Slider].forEach(slider => {
+            slider.addEventListener('input', updateSimulator);
+        });
+
+        // Initial call
+        window.onload = updateSimulator;
+    </script>
+<script src="./simulator-common.js?v=4"></script>
+</body>
+</html>

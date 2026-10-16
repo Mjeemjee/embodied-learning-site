@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UART 模拟器 (动画版)</title>
+
+
+</head>
+    <!-- JavaScript file linked at the end -->
+    <script >
+	document.addEventListener('DOMContentLoaded', () => {
+    // --- Get DOM Elements ---
+    const dataInputEl = document.getElementById('data-input');
+    const dataBitsEl = document.getElementById('data-bits');
+    const parityEl = document.getElementById('parity');
+    const stopBitsEl = document.getElementById('stop-bits');
+    const speedEl = document.getElementById('speed');
+    const simulateBtn = document.getElementById('simulate-btn');
+    const binaryOutputPre = document.querySelector('#binary-output pre');
+    const waveformContainer = document.querySelector('.waveform-container');
+    const statusEl = document.getElementById('status');
+
+    // --- Element Existence Check ---
+    if (!dataInputEl || !dataBitsEl || !parityEl || !stopBitsEl || !speedEl || !simulateBtn || !binaryOutputPre || !waveformContainer || !statusEl) {
+        console.error("Error: One or more essential HTML elements not found!");
+        alert("Initialization Error! Could not find all required elements on the page. Please check the HTML structure and element IDs.");
+        return; // Stop script execution
+    }
+
+    // --- Global State Variables ---
+    let animationTimeoutId = null;
+    let currentAnimationId = 0; // Added: ID to track the current animation sequence
+    let currentBitIndex = 0;
+    let currentFrames = [];
+    let currentBitElement = null;
+
+    // --- Helper Functions (calculateParity, prepareFrames - keep as before) ---
+    function calculateParity(binaryData, parityType) {
+        if (parityType === 'none') return '';
+        let onesCount = (binaryData.match(/1/g) || []).length;
+        if (parityType === 'even') {
+            return (onesCount % 2 === 0) ? '0' : '1';
+        } else {
+            return (onesCount % 2 === 0) ? '1' : '0';
+        }
+    }
+
+    function prepareFrames(text, dataBits, parityType, stopBits) {
+        const frames = [];
+        frames.push({ value: '1', type: 'idle', title: 'Idle Line', char: null });
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const asciiValue = char.charCodeAt(0);
+            if (asciiValue > 127) {
+                console.warn(`Character '${char}' (ASCII ${asciiValue}) is outside standard ASCII range (0-127).`);
+            }
+            let binaryData = asciiValue.toString(2).padStart(dataBits, '0');
+            if (binaryData.length > dataBits) {
+                 binaryData = binaryData.slice(-dataBits);
+            }
+            const reversedBinaryData = binaryData.split('').reverse().join('');
+            const parityBit = calculateParity(reversedBinaryData, parityType);
+            const startBit = '0';
+            const stopBitString = '1'.repeat(stopBits);
+
+            frames.push({ value: startBit, type: 'start', title: `Char '${char}': Start Bit`, char: char });
+            for (let j = 0; j < reversedBinaryData.length; j++) {
+                frames.push({ value: reversedBinaryData[j], type: 'data', title: `Char '${char}': Data Bit ${j} (LSB=${reversedBinaryData[j]})`, char: char });
+            }
+            if (parityBit !== '') {
+                frames.push({ value: parityBit, type: 'parity', title: `Char '${char}': Parity Bit (${parityType})`, char: char });
+            }
+            for (let k = 0; k < stopBits; k++) {
+                frames.push({ value: '1', type: 'stop', title: `Char '${char}': Stop Bit ${k + 1}`, char: char });
+            }
+            if (i < text.length - 1) {
+                frames.push({ value: '1', type: 'idle', title: 'Inter-character Idle', char: null });
+            }
+        }
+        return { frames };
+    }
+
+
+    function addWaveformBitElement(bitData) {
+        const bitDiv = document.createElement('div');
+        bitDiv.classList.add('bit');
+        const levelClass = bitData.value === '1' ? 'high' : 'low';
+        bitDiv.classList.add(bitData.type, levelClass);
+        bitDiv.title = bitData.title + ` (Value: ${bitData.value})`;
+        bitDiv.setAttribute('data-value', bitData.value);
+        waveformContainer.appendChild(bitDiv);
+        try {
+             waveformContainer.scrollTo({ left: waveformContainer.scrollWidth, behavior: 'smooth' });
+        } catch(e){
+             waveformContainer.scrollLeft = waveformContainer.scrollWidth;
+        }
+        return bitDiv;
+    }
+
+    // --- Modified Animation Core Logic ---
+    function animateNextBit(animationInstanceId) {
+        // *** Added Check: Only proceed if this is the currently active animation instance ***
+        if (animationInstanceId !== currentAnimationId) {
+             // console.log(`Animation instance ${animationInstanceId} stopped because a newer one (${currentAnimationId}) started.`);
+            return; // Stop execution if this is an old, cancelled animation loop
+        }
+
+        // Remove highlight from the previous bit
+        if (currentBitElement) {
+            currentBitElement.classList.remove('drawing');
+        }
+
+        // Check if animation is complete for this instance
+        if (currentBitIndex >= currentFrames.length) {
+            statusEl.textContent = '状态: 模拟完成';
+            simulateBtn.disabled = false;
+            animationTimeoutId = null; // Clear the ID as we are finished
+            return;
+        }
+
+        // Get data for the current bit
+        const bitData = currentFrames[currentBitIndex];
+        statusEl.textContent = `状态: 发送 ${bitData.title}`;
+
+        // Create and add the visual element for the current bit
+        // *** Ensure waveform container hasn't been cleared by a rapid restart ***
+        if(waveformContainer.isConnected) { // Check if container is still part of the document
+             currentBitElement = addWaveformBitElement(bitData);
+             currentBitElement.classList.add('drawing'); // Highlight the current bit
+        } else {
+             console.warn("Waveform container detached, stopping animation.");
+             simulateBtn.disabled = false; // Re-enable button
+             animationTimeoutId = null;
+             return; // Stop if container is gone
+        }
+
+
+        // Update binary log (same logic as before)
+        const isLastBitOfChar = (bitData.type === 'stop') &&
+                                (!currentFrames[currentBitIndex + 1] ||
+                                 ['idle', 'start'].includes(currentFrames[currentBitIndex + 1].type));
+
+        if (isLastBitOfChar && bitData.char) {
+            let startIndex = currentBitIndex;
+            while(startIndex >= 0 && currentFrames[startIndex].char === bitData.char) {
+                 if(currentFrames[startIndex].type === 'start') break;
+                 startIndex--;
+            }
+             if(startIndex < 0) startIndex = 0;
+
+             let frameBits = [];
+             for (let k = startIndex; k <= currentBitIndex; k++) {
+                 // Make sure index k is valid
+                 if (k < currentFrames.length && (currentFrames[k].char === bitData.char || (currentFrames[k].type === 'start' && k === startIndex))) {
+                    frameBits.push(currentFrames[k]);
+                 }
+             }
+
+             const char = bitData.char;
+             const asciiValue = char.charCodeAt(0);
+             const startBit = frameBits.find(b => b.type === 'start')?.value || '?';
+             const dataBitsStr = frameBits.filter(b => b.type === 'data').map(b => b.value).join('');
+             const parityBit = frameBits.find(b => b.type === 'parity')?.value || 'N/A';
+             const parityType = parityEl.value;
+             const stopBitsStr = frameBits.filter(b => b.type === 'stop').map(b => b.value).join('');
+             const frameSummary = `${startBit}(S)|${dataBitsStr}(D)|${parityBit}(${parityType !== 'none' ? parityType[0].toUpperCase() : 'N'})|${stopBitsStr}(P)`;
+             binaryOutputPre.textContent += `字符 '${char}' (ASCII ${asciiValue}): ${frameSummary}\n`;
+             binaryOutputPre.scrollTop = binaryOutputPre.scrollHeight;
+        }
+
+        // Move to the next bit index for the *next* call
+        currentBitIndex++;
+
+        // Schedule the next bit draw for *this* animation instance
+        const bitDelay = parseInt(speedEl.value);
+        const delay = (bitData.type === 'idle') ? bitDelay * 1.2 : bitDelay;
+
+        // Schedule the next step ONLY if this animation sequence is still the active one
+        // Pass the current animation ID to the next timeout function
+        animationTimeoutId = setTimeout(() => {
+             animateNextBit(animationInstanceId); // Pass the ID recursively
+        }, delay);
+    }
+
+    // --- Event Listener for the Simulate Button ---
+    simulateBtn.addEventListener('click', () => {
+        // --- Stop previous animation ---
+        if (animationTimeoutId) {
+            clearTimeout(animationTimeoutId);
+            // No need to set animationTimeoutId = null here,
+            // the check inside animateNextBit handles outdated calls.
+        }
+
+        // *** Increment the animation instance ID to invalidate previous loops ***
+        currentAnimationId++;
+        const myAnimationId = currentAnimationId; // Capture ID for this new sequence
+
+        // --- Reset state for the new animation ---
+        currentBitIndex = 0;
+        currentFrames = [];
+        currentBitElement = null; // Ensure no lingering highlighted element reference
+
+        // --- Get current configuration ---
+        const dataInput = dataInputEl.value;
+        const dataBits = parseInt(dataBitsEl.value);
+        const parityType = parityEl.value;
+        const stopBits = parseInt(stopBitsEl.value);
+
+        // --- Clear previous outputs ---
+        binaryOutputPre.textContent = '';
+        waveformContainer.innerHTML = ''; // Clear waveform visually
+        statusEl.textContent = '状态: 准备中...';
+
+        // --- Validate input ---
+        if (!dataInput) {
+            binaryOutputPre.textContent = '错误: 请输入要发送的数据！';
+            statusEl.textContent = '状态: 错误 - 无输入';
+            simulateBtn.disabled = false; // Make sure button is enabled if we exit early
+            return;
+        }
+
+        // --- Prepare data for animation ---
+        try {
+            const { frames } = prepareFrames(dataInput, dataBits, parityType, stopBits);
+            currentFrames = frames; // Assign frames for the new animation
+        } catch (error) {
+             console.error("Error preparing frames:", error);
+             statusEl.textContent = '状态: 错误 - 无法处理输入';
+             binaryOutputPre.textContent = `错误: ${error.message}`;
+             simulateBtn.disabled = false; // Re-enable button on error
+             return;
+        }
+
+        // --- Start New Animation ---
+        simulateBtn.disabled = true;
+        statusEl.textContent = '状态: 开始模拟...';
+        // Start the first call, passing the unique ID for this animation run
+        animateNextBit(myAnimationId);
+    });
+
+    // --- Set Initial Status ---
+    statusEl.textContent = '状态: 空闲';
+
+}); // End of DOMContentLoaded listener
+	
+	</script>
+	<style>
+	
+	body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    margin: 20px;
+    background-color: #f4f4f4;
+}
+
+h1, h2, h3 {
+    color: #333;
+}
+
+.config {
+    background-color: #e7e7e7;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    display: flex; /* Use flexbox for better alignment */
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    gap: 10px; /* Spacing between items */
+    align-items: center; /* Align items vertically */
+}
+
+.config label {
+    margin-right: 5px;
+    /* margin-left: 10px; removed for flex gap */
+}
+.config input[type="text"],
+.config select {
+    padding: 8px;
+    /* margin-right: 10px; removed for flex gap */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.config button {
+    padding: 10px 15px;
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease; /* Smooth transition */
+}
+
+.config button:hover {
+    background-color: #4cae4c;
+}
+.config button:disabled { /* Style for disabled button */
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.output {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    margin-top: 20px;
+}
+
+#binary-output pre {
+    background-color: #eee;
+    padding: 10px;
+    border-radius: 4px;
+    white-space: pre-wrap; /* Allow wrapping */
+    word-wrap: break-word;
+    font-family: monospace;
+    font-size: 1.1em;
+    border: 1px solid #ccc;
+    max-height: 200px; /* Limit height and allow scrolling */
+    overflow-y: auto;
+}
+
+.waveform-container {
+    display: flex; /* Use flex for horizontal layout */
+    flex-wrap: nowrap; /* Prevent bits from wrapping */
+    align-items: flex-end; /* Align low bits at the bottom */
+    min-height: 100px; /* Container minimum height */
+    background-color: #f8f8f8;
+    border: 1px solid #ccc;
+    padding: 10px 5px 5px 5px; /* Padding */
+    margin-top: 10px;
+    overflow-x: auto; /* Allow horizontal scrolling */
+    position: relative; /* Needed for absolute positioning inside if required */
+}
+
+.bit {
+    width: 25px; /* Each bit's width */
+    height: 60px; /* Bit height */
+    border-left: 1px solid #bbb;
+    border-right: 1px solid #bbb;
+    box-sizing: border-box;
+    position: relative; /* For pseudo-element positioning */
+    font-size: 10px;
+    text-align: center;
+    cursor: default;
+    margin-right: 1px; /* Small gap between bits */
+    flex-shrink: 0; /* Prevent bits from shrinking */
+    transition: outline 0.1s ease-out, transform 0.1s ease-out, background-color 0.1s; /* Transitions */
+    display: flex; /* Use flex to help align content/borders */
+    flex-direction: column; /* Stack content vertically */
+}
+
+.bit.high {
+    border-top: 3px solid blue;
+    border-bottom: none;
+    align-self: flex-start; /* Align high bits to the top of the container */
+    color: blue;
+    background-color: rgba(0, 0, 255, 0.05); /* Slight blue background */
+}
+
+.bit.low {
+    border-bottom: 3px solid red;
+    border-top: none;
+    align-self: flex-end; /* Align low bits to the bottom (default) */
+    color: red;
+    background-color: rgba(255, 0, 0, 0.05); /* Slight red background */
+}
+
+/* Style for the bit value (0 or 1) shown below the bit */
+.bit::after {
+    content: attr(data-value);
+    position: absolute;
+    bottom: -18px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    color: #333; /* Darker color for value */
+}
+.bit.high::after {
+     color: blue; /* Match border color */
+}
+.bit.low::after {
+     color: red; /* Match border color */
+}
+
+/* Specific bit type styling */
+.idle { border-color: green; }
+.idle.high { border-top-color: green; background-color: rgba(0, 128, 0, 0.05);}
+.idle.high::after { color: green; }
+
+.start { border-color: orange; }
+.start.low { border-bottom-color: orange; background-color: rgba(255, 165, 0, 0.05);}
+.start.low::after { color: orange; }
+
+.data { border-color: #666; } /* Default data bit border */
+.data.high { border-top-color: blue;}
+.data.low { border-bottom-color: red;}
+
+
+.parity { border-color: magenta; }
+.parity.high { border-top-color: magenta; background-color: rgba(255, 0, 255, 0.05);}
+.parity.high::after { color: magenta; }
+.parity.low { border-bottom-color: magenta; background-color: rgba(255, 0, 255, 0.05);}
+.parity.low::after { color: magenta; }
+
+
+.stop { border-color: purple; }
+.stop.high { border-top-color: purple; background-color: rgba(128, 0, 128, 0.05);}
+.stop.high::after { color: purple; }
+
+
+/* Highlight for the bit currently being 'sent' */
+.bit.drawing {
+    outline: 3px solid gold;
+    transform: scale(1.05); /* Slightly enlarge */
+    z-index: 10; /* Ensure outline is visible */
+}
+
+/* Style for the status message */
+#status {
+    color: #555;
+    font-weight: bold;
+    min-height: 1.2em; /* Prevent layout shift when text changes */
+}
+
+/* Optional: Character separator (can be done with margin/padding on bits too) */
+/* .char-separator { ... } */ /* Currently handled by idle bits */
+	</style>
+<link rel="stylesheet" href="../课程ppt/simulator-common.css?v=4">
+<body class="sim-uart" data-simulator="uart">
+    <h1>UART 通讯模拟器 (动画版)</h1>
+
+    <div class="config">
+        <label for="data-input">输入文本 (ASCII):</label>
+        <input type="text" id="data-input" value="Go">
+
+        <label for="data-bits">数据位:</label>
+        <select id="data-bits">
+            <option value="8" selected>8 位</option>
+            <option value="7">7 位</option>
+        </select>
+
+        <label for="parity">校验位:</label>
+        <select id="parity">
+            <option value="none" selected>无 (None)</option>
+            <option value="even">偶校验 (Even)</option>
+            <option value="odd">奇校验 (Odd)</option>
+        </select>
+
+        <label for="stop-bits">停止位:</label>
+        <select id="stop-bits">
+            <option value="1" selected>1 位</option>
+            <option value="2">2 位</option>
+        </select>
+
+        <label for="speed">速度 (ms/bit):</label>
+        <select id="speed">
+            <option value="500">慢 (500)</option>
+            <option value="250" selected>中 (250)</option>
+            <option value="100">快 (100)</option>
+             <option value="50">极快 (50)</option>
+        </select>
+
+        <button id="simulate-btn">开始模拟</button>
+    </div>
+
+    <div class="output">
+        <h2>模拟结果:</h2>
+        <div id="binary-output">
+            <h3>二进制帧 (逐字显示):</h3>
+            <pre><!-- Binary log will appear here --></pre>
+        </div>
+        <div id="waveform-output">
+            <h3>信号波形 (动画):</h3>
+            <!-- Waveform container -->
+            <div class="waveform-container">
+                <!-- Waveform bits will be generated here by JavaScript -->
+            </div>
+             <!-- Status indicator -->
+             <div id="status" style="margin-top: 10px; font-weight: bold;">状态: 空闲</div>
+        </div>
+    </div>
+
+
+<script src="../课程ppt/simulator-common.js?v=4"></script>
+</body>
+</html>

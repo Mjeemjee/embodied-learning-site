@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>单连杆几何推导模拟器</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .simulator-container {
+            display: flex;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #d9d9d9;
+            width: 1100px;
+            height: 680px;
+        }
+
+        .control-panel {
+            width: 380px;
+            padding: 25px;
+            background-color: #fafafa;
+            border-right: 1px solid #e8e8e8;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .canvas-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+        }
+
+        canvas {
+            border: 1px solid #dcdcdc;
+            background-color: #fdfdfd;
+        }
+
+        h1, h2 {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            color: #003366;
+            margin: 0;
+            padding: 0;
+        }
+        
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #005a9e;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 1.3em;
+            margin-top: 20px;
+            color: #333;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .value-display {
+            font-weight: bold;
+            color: #c82333;
+            margin-left: 8px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        .derivation-display {
+            font-family: 'Cambria', 'Times New Roman', Times, serif;
+            background-color: #e9f5ff;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 1.1em;
+            line-height: 1.8;
+            border: 1px solid #b0d1f2;
+            margin-top: 15px;
+        }
+        
+        .derivation-display .formula {
+            font-weight: bold;
+        }
+        
+        .derivation-display .term {
+             font-style: italic;
+             color: #555;
+        }
+        .derivation-display .value {
+             font-weight: bold;
+             color: #003366;
+        }
+        
+        .color-key {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+    </style>
+<link rel="stylesheet" href="./simulator-common.css?v=4">
+</head>
+<body class="sim-linkage2" data-simulator="linkage2">
+
+    <div class="simulator-container">
+        <div class="control-panel">
+            <h1>几何推导模拟器</h1>
+            
+            <h2>输入参数 (极坐标)</h2>
+            <div class="control-group">
+                <label for="linkLength">斜边 (Hypotenuse, L₁): <span id="linkLengthValue" class="value-display">150</span></label>
+                <input type="range" id="linkLength" min="50" max="250" value="150">
+            </div>
+            <div class="control-group">
+                <label for="theta1">角度 (Angle, θ₁): <span id="theta1Value" class="value-display">45</span> °</label>
+                <input type="range" id="theta1" min="-180" max="180" value="45">
+            </div>
+            
+            <h2>推导过程与结果 (笛卡尔坐标)</h2>
+            <div class="derivation-display">
+                <div class="formula"><span style="background-color: #28a745;" class="color-key"></span>邻边 (X₁) = <span class="term">斜边</span> × cos(<span class="term">角度</span>)</div>
+                <div style="padding-left: 20px;">X₁ = <span id="calcL1_1" class="value">150.00</span> × cos(<span id="calcTheta1_1" class="value">45°</span>) = <span id="resultX" class="value">106.07</span></div>
+                <br>
+                <div class="formula"><span style="background-color: #fd7e14;" class="color-key"></span>对边 (Y₁) = <span class="term">斜边</span> × sin(<span class="term">角度</span>)</div>
+                <div style="padding-left: 20px;">Y₁ = <span id="calcL1_2" class="value">150.00</span> × sin(<span id="calcTheta1_2" class="value">45°</span>) = <span id="resultY" class="value">106.07</span></div>
+            </div>
+            
+        </div>
+        <div class="canvas-container">
+            <canvas id="simulatorCanvas" width="640" height="640"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const linkLengthSlider = document.getElementById('linkLength');
+        const theta1Slider = document.getElementById('theta1');
+        const linkLengthValueSpan = document.getElementById('linkLengthValue');
+        const theta1ValueSpan = document.getElementById('theta1Value');
+        
+        const calcL1_1 = document.getElementById('calcL1_1');
+        const calcTheta1_1 = document.getElementById('calcTheta1_1');
+        const resultXSpan = document.getElementById('resultX');
+
+        const calcL1_2 = document.getElementById('calcL1_2');
+        const calcTheta1_2 = document.getElementById('calcTheta1_2');
+        const resultYSpan = document.getElementById('resultY');
+        
+        const canvas = document.getElementById('simulatorCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Main update and draw function
+        function updateSimulator() {
+            // 1. Get input values
+            const L1 = parseFloat(linkLengthSlider.value);
+            const theta1_deg = parseFloat(theta1Slider.value);
+            
+            // 2. Convert angle to radians for calculation
+            const theta1_rad = theta1_deg * Math.PI / 180;
+            
+            // 3. Forward Kinematics Calculation
+            const X1 = L1 * Math.cos(theta1_rad);
+            const Y1 = L1 * Math.sin(theta1_rad);
+            
+            // 4. Update UI Displays
+            linkLengthValueSpan.textContent = L1.toFixed(0);
+            theta1ValueSpan.textContent = theta1_deg.toFixed(0);
+            
+            calcL1_1.textContent = L1.toFixed(2);
+            calcTheta1_1.textContent = `${theta1_deg.toFixed(0)}°`;
+            resultXSpan.textContent = X1.toFixed(2);
+            
+            calcL1_2.textContent = L1.toFixed(2);
+            calcTheta1_2.textContent = `${theta1_deg.toFixed(0)}°`;
+            resultYSpan.textContent = Y1.toFixed(2);
+            
+            // 5. Redraw the canvas
+            drawCanvas(L1, theta1_rad, X1, Y1, theta1_deg);
+        }
+
+        // Canvas drawing logic
+        function drawCanvas(L1, theta1_rad, X1, Y1, theta1_deg) {
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(1, -1);
+            
+            drawGrid();
+            drawAxes();
+            
+            // Draw the right-angle triangle
+            // Adjacent side (X1) - Green
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(X1, 0);
+            ctx.strokeStyle = '#28a745';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+
+            // Opposite side (Y1) - Orange
+            ctx.beginPath();
+            ctx.moveTo(X1, 0);
+            ctx.lineTo(X1, Y1);
+            ctx.strokeStyle = '#fd7e14';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Draw right angle symbol
+            ctx.setLineDash([]);
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            const size = 15;
+            const signX = X1 > 0 ? 1 : -1;
+            const signY = Y1 > 0 ? 1 : -1;
+            ctx.strokeRect(X1 - size * signX, 0, size * signX, size * signY);
+
+            // Hypotenuse (The link L1) - Blue
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(X1, Y1);
+            ctx.strokeStyle = '#005a9e';
+            ctx.lineWidth = 7;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Draw angle arc
+            ctx.beginPath();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(200, 35, 51, 0.7)';
+            ctx.arc(0, 0, 40, 0, theta1_rad, theta1_deg < 0);
+            ctx.stroke();
+
+            // Draw joints
+            ctx.beginPath();
+            ctx.arc(0, 0, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = '#003366';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(X1, Y1, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = '#c82333';
+            ctx.fill();
+
+            ctx.restore();
+            
+            // Draw labels
+            drawLabels(centerX, centerY, L1, theta1_rad, X1, Y1, theta1_deg);
+        }
+
+        function drawLabels(cx, cy, L1, theta1_rad, X1, Y1, theta1_deg) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            
+            // Label for theta
+            ctx.fillStyle = '#c82333';
+            ctx.font = '16px Arial';
+            ctx.fillText(`θ₁=${theta1_deg}°`, 50 * Math.cos(theta1_rad / 2), -50 * Math.sin(theta1_rad / 2) - 5);
+            
+            // Label for X1 (Adjacent)
+            ctx.fillStyle = '#28a745';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(`X₁ = ${X1.toFixed(1)}`, X1 / 2 - 20, 20);
+
+            // Label for Y1 (Opposite)
+            ctx.fillStyle = '#fd7e14';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(`Y₁ = ${Y1.toFixed(1)}`, X1 + 10, -Y1/2 + 5);
+
+            // Label for L1 (Hypotenuse)
+            ctx.fillStyle = '#005a9e';
+            ctx.font = 'bold 16px Arial';
+            ctx.rotate(-theta1_rad); // Rotate to align with the link
+            ctx.fillText(`L₁ = ${L1.toFixed(0)}`, L1 / 2 - 30, -12);
+
+            ctx.restore();
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 0.5;
+            const step = 50;
+            for (let x = step; x < canvas.width / 2; x += step) {
+                ctx.beginPath(); ctx.moveTo(x, -canvas.height / 2); ctx.lineTo(x, canvas.height / 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-x, -canvas.height / 2); ctx.lineTo(-x, canvas.height / 2); ctx.stroke();
+            }
+            for (let y = step; y < canvas.height / 2; y += step) {
+                ctx.beginPath(); ctx.moveTo(-canvas.width / 2, y); ctx.lineTo(canvas.width / 2, y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-canvas.width / 2, -y); ctx.lineTo(canvas.width / 2, -y); ctx.stroke();
+            }
+        }
+        
+        function drawAxes() {
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(-canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, -canvas.height / 2); ctx.lineTo(0, canvas.height / 2); ctx.stroke();
+            
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('X', canvas.width - 20, canvas.height / 2 + 20);
+            ctx.fillText('Y', canvas.width / 2 + 10, 20);
+            ctx.restore();
+        }
+
+        // Event Listeners
+        linkLengthSlider.addEventListener('input', updateSimulator);
+        theta1Slider.addEventListener('input', updateSimulator);
+
+        // Initial call
+        window.onload = updateSimulator;
+
+    </script>
+<script src="./simulator-common.js?v=4"></script>
+</body>
+</html>

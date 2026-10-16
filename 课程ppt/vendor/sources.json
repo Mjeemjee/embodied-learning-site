@@ -1,0 +1,18 @@
+[
+  {
+    "source": "https://unpkg.com/three@0.157.0/build/three.module.js",
+    "sha256": "ef5c33eb93a1e3638bd53a2c84224486578ed3c8479976a8985447e7d734fb99"
+  },
+  {
+    "source": "https://unpkg.com/three@0.157.0/examples/jsm/controls/OrbitControls.js",
+    "sha256": "857061a12a014e5f6447582a4d2eb6d45547e2684bb5f170ca426e532bfe5b90"
+  },
+  {
+    "source": "https://unpkg.com/three@0.157.0/examples/jsm/renderers/CSS2DRenderer.js",
+    "sha256": "a4f0f79184c043f6b9d2654d8ba051e49a7d631d34e8f437c1804798a68c379f"
+  },
+  {
+    "source": "https://unpkg.com/three@0.157.0/LICENSE",
+    "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d"
+  }
+]

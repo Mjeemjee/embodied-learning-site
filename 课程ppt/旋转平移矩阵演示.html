@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交互式2D矩阵变换 (标准坐标系)</title>
+<style>
+    :root {
+        --primary-color: #007bff;
+        --secondary-color: #6c757d;
+        --bg-color: #f8f9fa;
+        --panel-bg: #ffffff;
+        --border-color: #dee2e6;
+        --text-color: #212529;
+        --rotation-color: #17a2b8;
+        --translation-color: #28a745;
+    }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+    }
+    .page-wrapper {
+        width: 100%;
+        max-width: 1200px;
+    }
+    .panel {
+        background-color: var(--panel-bg);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        padding: 25px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 30px;
+    }
+    h1 {
+        color: var(--text-color);
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    h2, h3 {
+        color: var(--primary-color);
+        border-bottom: 2px solid #eef;
+        padding-bottom: 10px;
+        margin-top: 0;
+    }
+    .explanation {
+        font-size: 0.95em;
+        color: #555;
+        line-height: 1.6;
+        margin-top: 10px;
+    }
+    .coord-note {
+        font-size: 0.9em;
+        background-color: #fffbe6;
+        border: 1px solid #ffe58f;
+        padding: 8px 12px;
+        border-radius: 4px;
+        color: #856404;
+    }
+    
+    /* --- 布局 --- */
+    .controls-container { display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 20px; }
+    .control-group { flex: 1; min-width: 250px; }
+    .content-container { display: flex; gap: 30px; flex-wrap: wrap; }
+    .column { display: flex; flex-direction: column; flex: 1; min-width: 350px; }
+    canvas { border: 1px solid var(--border-color); background-color: #fdfdfd; width: 100%; height: auto; aspect-ratio: 1 / 1; }
+
+    /* --- 矩阵和计算 --- */
+    .matrix-display, .vector-display { font-family: 'SF Mono', 'Courier New', monospace; text-align: center; }
+    .matrix-grid, .vector-grid { display: grid; gap: 5px; }
+    .matrix-grid { grid-template-columns: repeat(3, 1fr); }
+    .vector-grid { grid-template-rows: repeat(3, 1fr); }
+    .matrix-cell, .vector-cell { padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); background-color: #e9ecef; }
+    .formula-matrix-container { padding: 15px; background-color: #f8f9fa; border: 1px dashed var(--border-color); border-radius: 6px; margin-bottom: 20px; }
+    .formula-matrix .matrix-cell { font-weight: bold; font-style: italic; }
+    .rot-cell { border-left: 3px solid var(--rotation-color); border-top: 3px solid var(--rotation-color); }
+    .trans-cell { border-left: 3px solid var(--translation-color); border-top: 3px solid var(--translation-color); }
+    .fixed-cell { background-color: #e9ecef; font-style: normal; }
+    .formula-title { font-weight: bold; text-align: center; margin-bottom: 10px; color: var(--secondary-color); }
+    .calculation-layout { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 15px; font-size: 1.2em; flex-wrap: wrap; }
+    .vector-cell { background-color: #e2eafc; border-color: #d1d9ec; color: #3a5fcd; }
+    .result-vector .vector-cell { background-color: #d4edda; border-color: #c3e6cb; color: #155724; font-weight: bold; }
+    .op-symbol { font-weight: bold; color: #555; font-size: 1.5em; }
+
+</style>
+<link rel="stylesheet" href="./simulator-common.css?v=4">
+</head>
+<body class="sim-transform" data-simulator="transform">
+
+<div class="page-wrapper">
+
+    <h1>2D图形变换的“魔法”：一个矩阵搞定所有！</h1>
+
+    <div class="panel">
+        <div class="controls-container">
+            <div class="control-group">
+                <label for="translateX">X轴平移 (tx): <span id="translateXValue">0</span></label>
+                <input type="range" id="translateX" min="-150" max="150" value="0">
+            </div>
+            <div class="control-group">
+                <label for="translateY">Y轴平移 (ty): <span id="translateYValue">0</span></label>
+                <input type="range" id="translateY" min="-150" max="150" value="0">
+            </div>
+            <div class="control-group">
+                <label for="rotation">旋转 (θ): <span id="rotationValue">0</span>°</label>
+                <input type="range" id="rotation" min="0" max="360" value="0">
+            </div>
+        </div>
+    </div>
+
+    <div class="content-container">
+        <div class="column">
+            <div class="panel">
+                <h2>图形变换演示</h2>
+                <canvas id="transformationCanvas" width="400" height="400"></canvas>
+                <p class="explanation coord-note"><b>请注意：</b>我们已将画布设为标准的数学坐标系（X轴向右为正，Y轴<b>向上</b>为正）。</p>
+            </div>
+        </div>
+        <div class="column">
+            <div class="panel">
+                <h2>公式与计算</h2>
+                <div class="formula-matrix-container">
+                    <div class="formula-title">通用旋转平移矩阵</div>
+                    <div class="matrix-display formula-matrix">
+                        <div class="matrix-grid">
+                            <div class="matrix-cell rot-cell">cos(θ)</div><div class="matrix-cell rot-cell">-sin(θ)</div><div class="matrix-cell trans-cell">tx</div>
+                            <div class="matrix-cell rot-cell">sin(θ)</div><div class="matrix-cell rot-cell">cos(θ)</div><div class="matrix-cell trans-cell">ty</div>
+                            <div class="matrix-cell fixed-cell">0</div><div class="matrix-cell fixed-cell">0</div><div class="matrix-cell fixed-cell">1</div>
+                        </div>
+                    </div>
+                </div>
+                <h3>实时计算: <code style="font-size: 0.9em;">[新坐标] = [矩阵] × [原始坐标]</code></h3>
+                <p class="explanation">我们来跟踪图形<b>右上方</b>的红点（原始坐标 <code style="color: #3a5fcd;">(50, 25)</code>）的变化：</p>
+                <div class="calculation-layout">
+                    <div class="vector-display result-vector">
+                        <div class="vector-grid"><div class="vector-cell" id="resX">50.0</div><div class="vector-cell" id="resY">25.0</div><div class="vector-cell">1</div></div>
+                    </div>
+                    <div class="op-symbol">=</div>
+                    <div class="matrix-display">
+                        <div class="matrix-grid">
+                            <div class="matrix-cell" id="m00">1.00</div><div class="matrix-cell" id="m01">0.00</div><div class="matrix-cell" id="m02">0</div>
+                            <div class="matrix-cell" id="m10">0.00</div><div class="matrix-cell" id="m11">1.00</div><div class="matrix-cell" id="m12">0</div>
+                            <div class="matrix-cell fixed-cell">0</div><div class="matrix-cell fixed-cell">0</div><div class="matrix-cell fixed-cell">1</div>
+                        </div>
+                    </div>
+                    <div class="op-symbol">×</div>
+                    <div class="vector-display">
+                        <div class="vector-grid"><div class="vector-cell" id="origX">50</div><div class="vector-cell" id="origY">25</div><div class="vector-cell">1</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('transformationCanvas');
+    const ctx = canvas.getContext('2d');
+    const translateXSlider = document.getElementById('translateX'), translateYSlider = document.getElementById('translateY'), rotationSlider = document.getElementById('rotation');
+    const translateXValue = document.getElementById('translateXValue'), translateYValue = document.getElementById('translateYValue'), rotationValue = document.getElementById('rotationValue');
+    const m00 = document.getElementById('m00'), m01 = document.getElementById('m01'), m02 = document.getElementById('m02');
+    const m10 = document.getElementById('m10'), m11 = document.getElementById('m11'), m12 = document.getElementById('m12');
+    const resX = document.getElementById('resX'), resY = document.getElementById('resY');
+    
+    // 矩形的右上角点，现在完全符合数学直觉
+    const trackedPoint = { x: 50, y: 25 }; 
+    document.getElementById('origX').textContent = trackedPoint.x;
+    document.getElementById('origY').textContent = trackedPoint.y;
+
+    function draw() {
+        // 1. 读取滑块值
+        const tx = parseInt(translateXSlider.value);
+        const ty = parseInt(translateYSlider.value); // 正值表示向上
+        const angleInDegrees = parseInt(rotationSlider.value);
+        const angleInRadians = angleInDegrees * Math.PI / 180;
+        
+        translateXValue.textContent = tx;
+        translateYValue.textContent = ty;
+        rotationValue.textContent = angleInDegrees;
+        
+        // 2. 计算矩阵元素
+        const cos = Math.cos(angleInRadians);
+        const sin = Math.sin(angleInRadians);
+        const a = cos, c = -sin, e = tx;
+        const b = sin, d = cos, f = ty; // *** 核心修正点 1: 不再需要反转ty ***
+
+        // 3. 更新界面上的矩阵数值
+        m00.textContent = a.toFixed(2); m01.textContent = c.toFixed(2); m02.textContent = e;
+        m10.textContent = b.toFixed(2); m11.textContent = d.toFixed(2); m12.textContent = f;
+
+        // 4. 计算红点的新坐标
+        const newX = a * trackedPoint.x + c * trackedPoint.y + e;
+        const newY = b * trackedPoint.x + d * trackedPoint.y + f;
+        resX.textContent = newX.toFixed(1);
+        resY.textContent = newY.toFixed(1);
+
+        // 5. 准备绘制
+        const canvasWidth = canvas.width, canvasHeight = canvas.height;
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置所有变换
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight); // 清空画布
+        
+        // *** 核心修正点 2: 建立标准数学坐标系 ***
+        ctx.translate(canvasWidth / 2, canvasHeight / 2); // 将原点(0,0)移到中心
+        ctx.scale(1, -1); // 翻转Y轴，现在向上为正
+
+        // 6. 绘制坐标轴背景
+        ctx.strokeStyle = '#e9ecef';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-canvasWidth/2, 0); ctx.lineTo(canvasWidth/2, 0);
+        ctx.moveTo(0, -canvasHeight/2); ctx.lineTo(0, canvasHeight/2);
+        ctx.stroke();
+
+        // 7. 应用最终的变换矩阵
+        ctx.transform(a, b, c, d, e, f);
+        
+        // 8. 绘制图形 (绘制命令的坐标现在都符合数学直觉)
+        // 这个矩形的中心是(0,0)，范围从x(-50,50), y(-25,25)
+        ctx.fillStyle = 'var(--primary-color)';
+        ctx.beginPath(); ctx.rect(-50, -25, 100, 50); ctx.fill();
+        
+        ctx.fillStyle = '#ffc107';
+        ctx.beginPath(); ctx.moveTo(50, -25); ctx.lineTo(70, 0); ctx.lineTo(50, 25); ctx.closePath(); ctx.fill();
+        
+        // 绘制红点，它现在会出现在图形的右上方
+        ctx.fillStyle = '#dc3545';
+        ctx.beginPath(); ctx.arc(trackedPoint.x, trackedPoint.y, 5, 0, 2 * Math.PI); ctx.fill();
+    }
+
+    [translateXSlider, translateYSlider, rotationSlider].forEach(slider => slider.addEventListener('input', draw));
+    window.addEventListener('resize', draw); 
+    draw();
+</script>
+
+<script src="./simulator-common.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二维三连杆机械臂仿真器</title>
+<style>
+    body {
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0;
+        padding: 20px;
+        background-color: #f0f0f0;
+    }
+    h1 {
+        color: #333;
+        margin-bottom: 20px;
+    }
+    .container {
+        display: grid;
+        grid-template-columns: auto 1fr auto; /* controls | canvas | output/settings */
+        grid-template-rows: auto 1fr; /* Top row for canvas/output, bottom for settings if needed */
+        gap: 20px;
+        width: 95%;
+        max-width: 1200px; /* Max width for better large screen layout */
+    }
+    .controls, .output, .settings-panel { /* Renamed .settings to .settings-panel for clarity */
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .controls {
+        grid-column: 1 / 2;
+        grid-row: 1 / 3; /* Span both rows if output and settings are stacked */
+        min-width: 270px;
+    }
+    #armCanvas {
+        grid-column: 2 / 3;
+        grid-row: 1 / 3; /* Canvas spans available height */
+        border: 1px solid #ccc;
+        background-color: #fff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        width: 100%; /* Make canvas responsive within its grid cell */
+        height: auto; /* Aspect ratio handled by width/height attributes */
+    }
+    .output {
+        grid-column: 3 / 4;
+        grid-row: 1 / 2;
+        min-width: 250px;
+    }
+    .settings-panel {
+        grid-column: 3 / 4;
+        grid-row: 2 / 3;
+        align-self: end; /* Push to bottom of its grid area */
+        min-width: 250px;
+    }
+
+    .controls h2, .output h2, .settings-panel h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .control-group {
+        margin-bottom: 15px;
+    }
+    .control-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #555;
+        font-size: 0.9em;
+    }
+    .control-group input[type="number"],
+    .control-group input[type="range"] {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 5px;
+    }
+    .control-group input[type="number"] {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .control-group .value-display {
+        font-size: 0.9em;
+        color: #777;
+        text-align: right;
+    }
+    .control-group input[type="checkbox"] {
+        margin-right: 5px;
+        vertical-align: middle;
+    }
+    .control-group label.inline {
+        display: inline-block;
+        font-weight: normal;
+    }
+    .output p {
+        font-size: 1em;
+        color: #333;
+        margin: 8px 0;
+    }
+    .output span {
+        font-weight: bold;
+        color: #007bff;
+    }
+    hr {
+        border: none;
+        border-top: 1px solid #eee;
+        margin: 20px 0;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 900px) { /* Stack columns for smaller screens */
+        .container {
+            grid-template-columns: 1fr; /* Single column */
+            grid-template-rows: auto auto auto auto; /* Stack elements */
+        }
+        .controls, #armCanvas, .output, .settings-panel {
+            grid-column: 1 / 2; /* All take full width */
+        }
+        .controls { grid-row: 1 / 2; }
+        #armCanvas { grid-row: 2 / 3; height: 400px; } /* Fixed height for canvas on small screens */
+        .output { grid-row: 3 / 4; }
+        .settings-panel { grid-row: 4 / 5; align-self: start; /* Reset alignment */}
+    }
+
+</style>
+<link rel="stylesheet" href="./simulator-common.css?v=4">
+</head>
+<body class="sim-arm2d" data-simulator="arm2d">
+
+<h1>二维三连杆机械臂仿真器</h1>
+
+<div class="container">
+    <div class="controls">
+        <h2>参数设置</h2>
+        <div class="control-group">
+            <label for="len1">连杆1长度 (L1):</label>
+            <input type="number" id="len1" value="100" min="0" max="300">
+            <input type="range" id="len1_slider" value="100" min="0" max="300">
+        </div>
+        <div class="control-group">
+            <label for="angle1">关节1角度 (θ1, 相对于X轴):</label>
+            <input type="number" id="angle1" value="30" min="-180" max="180">
+            <input type="range" id="angle1_slider" value="30" min="-180" max="180">
+            <div class="value-display" id="angle1_val">30°</div>
+        </div>
+        <hr>
+        <div class="control-group">
+            <label for="len2">连杆2长度 (L2):</label>
+            <input type="number" id="len2" value="80" min="0" max="300">
+            <input type="range" id="len2_slider" value="80" min="0" max="300">
+        </div>
+        <div class="control-group">
+            <label for="angle2">关节2角度 (θ2, 相对于连杆1):</label>
+            <input type="number" id="angle2" value="45" min="-180" max="180">
+            <input type="range" id="angle2_slider" value="45" min="-180" max="180">
+            <div class="value-display" id="angle2_val">45°</div>
+        </div>
+        <hr>
+        <div class="control-group">
+            <label for="len3">连杆3长度 (L3):</label>
+            <input type="number" id="len3" value="60" min="0" max="300">
+            <input type="range" id="len3_slider" value="60" min="0" max="300">
+        </div>
+        <div class="control-group">
+            <label for="angle3">关节3角度 (θ3, 相对于连杆2):</label>
+            <input type="number" id="angle3" value="-30" min="-180" max="180">
+            <input type="range" id="angle3_slider" value="-30" min="-180" max="180">
+            <div class="value-display" id="angle3_val">-30°</div>
+        </div>
+    </div>
+
+    <canvas id="armCanvas" width="600" height="500"></canvas>
+
+    <div class="output">
+        <h2>末端执行器位置</h2>
+        <p>X: <span id="endEffectorX">0.00</span></p>
+        <p>Y: <span id="endEffectorY">0.00</span></p>
+        <h2>关节位置 (相对基座)</h2>
+        <p>基座 (J0): X=0.00, Y=0.00</p>
+        <p>关节1 (J1): X=<span id="j1x">0.00</span>, Y=<span id="j1y">0.00</span></p>
+        <p>关节2 (J2): X=<span id="j2x">0.00</span>, Y=<span id="j2y">0.00</span></p>
+    </div>
+
+    <div class="settings-panel"> <!-- Renamed from .settings -->
+        <h2>视图设置</h2>
+        <div class="control-group">
+            <input type="checkbox" id="showGrid" checked>
+            <label for="showGrid" class="inline">显示网格</label>
+        </div>
+        <div class="control-group">
+            <input type="checkbox" id="showAngles" checked>
+            <label for="showAngles" class="inline">显示关节角度</label>
+        </div>
+        <div class="control-group">
+            <label for="tickSpacing">刻度/网格间距:</label>
+            <input type="number" id="tickSpacing" value="50" min="10" max="200" step="10">
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('armCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const len1Input = document.getElementById('len1');
+    const angle1Input = document.getElementById('angle1');
+    const len2Input = document.getElementById('len2');
+    const angle2Input = document.getElementById('angle2');
+    const len3Input = document.getElementById('len3');
+    const angle3Input = document.getElementById('angle3');
+
+    const len1Slider = document.getElementById('len1_slider');
+    const angle1Slider = document.getElementById('angle1_slider');
+    const len2Slider = document.getElementById('len2_slider');
+    const angle2Slider = document.getElementById('angle2_slider');
+    const len3Slider = document.getElementById('len3_slider');
+    const angle3Slider = document.getElementById('angle3_slider');
+
+    const angle1ValDisplay = document.getElementById('angle1_val');
+    const angle2ValDisplay = document.getElementById('angle2_val');
+    const angle3ValDisplay = document.getElementById('angle3_val');
+    
+    const endEffectorXDisplay = document.getElementById('endEffectorX');
+    const endEffectorYDisplay = document.getElementById('endEffectorY');
+    const j1xDisplay = document.getElementById('j1x');
+    const j1yDisplay = document.getElementById('j1y');
+    const j2xDisplay = document.getElementById('j2x');
+    const j2yDisplay = document.getElementById('j2y');
+
+    const showGridCheckbox = document.getElementById('showGrid');
+    const showAnglesCheckbox = document.getElementById('showAngles');
+    const tickSpacingInput = document.getElementById('tickSpacing');
+
+    const originX = canvas.width / 2;
+    const originY = canvas.height * 0.8; 
+
+    function degreesToRadians(degrees) {
+        return degrees * (Math.PI / 180);
+    }
+
+    function drawGridAndAxes(currentTickSpacing) {
+        ctx.save();
+        ctx.strokeStyle = '#e0e0e0'; 
+        ctx.fillStyle = '#666'; // Darker gray for better readability
+        ctx.lineWidth = 0.5;
+        ctx.font = '12px Arial'; // Increased font size for ticks
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (showGridCheckbox.checked) {
+            for (let x = originX + currentTickSpacing; x < canvas.width; x += currentTickSpacing) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let x = originX - currentTickSpacing; x > 0; x -= currentTickSpacing) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = originY + currentTickSpacing; y < canvas.height; y += currentTickSpacing) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+            for (let y = originY - currentTickSpacing; y > 0; y -= currentTickSpacing) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+        }
+
+        ctx.strokeStyle = '#888'; // Slightly darker axes
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); // X-axis
+        ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); // Y-axis
+        ctx.stroke();
+
+        // X-axis ticks and labels
+        for (let x = originX + currentTickSpacing; x < canvas.width; x += currentTickSpacing) {
+            ctx.beginPath(); ctx.moveTo(x, originY - 5); ctx.lineTo(x, originY + 5); ctx.stroke();
+            if ((x - originX) % (currentTickSpacing * (currentTickSpacing < 40 ? 1:2)) === 0 ) { 
+                 ctx.fillText((x - originX).toString(), x, originY + 18); // Adjusted y-offset for larger font
+            }
+        }
+        for (let x = originX - currentTickSpacing; x > 0; x -= currentTickSpacing) {
+            ctx.beginPath(); ctx.moveTo(x, originY - 5); ctx.lineTo(x, originY + 5); ctx.stroke();
+             if ((originX - x) % (currentTickSpacing * (currentTickSpacing < 40 ? 1:2)) === 0) {
+                ctx.fillText((x - originX).toString(), x, originY + 18);
+            }
+        }
+        // Y-axis ticks and labels
+        for (let y = originY - currentTickSpacing; y > 0; y -= currentTickSpacing) {
+            ctx.beginPath(); ctx.moveTo(originX - 5, y); ctx.lineTo(originX + 5, y); ctx.stroke();
+            if ((originY - y) % (currentTickSpacing * (currentTickSpacing < 40 ? 1:2)) === 0) {
+                ctx.fillText((originY - y).toString(), originX - 25, y); // Adjusted x-offset
+            }
+        }
+        for (let y = originY + currentTickSpacing; y < canvas.height; y += currentTickSpacing) {
+            ctx.beginPath(); ctx.moveTo(originX - 5, y); ctx.lineTo(originX + 5, y); ctx.stroke();
+            if ((y - originY) % (currentTickSpacing * (currentTickSpacing < 40 ? 1:2)) === 0) {
+                ctx.fillText((originY - y).toString(), originX - 25, y);
+            }
+        }
+        ctx.fillText("0", originX - 12, originY + 18); // Origin label
+        ctx.restore();
+    }
+
+    function drawAngleIndicator(cx, cy, currentRelativeMathDeg, prevAbsoluteMathDeg, radius, label, color = '#555') {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.font = "bold 13px Arial"; // Increased font size for angles
+
+        const prevAbsoluteCanvasRad = -degreesToRadians(prevAbsoluteMathDeg);
+        const currentRelativeMathRad = degreesToRadians(currentRelativeMathDeg);
+        const currentAbsoluteCanvasRad = -(degreesToRadians(prevAbsoluteMathDeg + currentRelativeMathDeg));
+
+        const refLineLength = radius * 1.1;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + refLineLength * Math.cos(prevAbsoluteCanvasRad), 
+                     cy + refLineLength * Math.sin(prevAbsoluteCanvasRad));
+        ctx.setLineDash([2, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const isArcAnticlockwise = (currentRelativeMathDeg < 0);
+        
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, prevAbsoluteCanvasRad, currentAbsoluteCanvasRad, isArcAnticlockwise);
+        ctx.stroke();
+
+        const midArcSweepCanvasRad = prevAbsoluteCanvasRad + (-currentRelativeMathRad / 2);
+        const labelDist = radius * 1.6; // Increased distance for larger font
+        let textX = cx + labelDist * Math.cos(midArcSweepCanvasRad);
+        let textY = cy + labelDist * Math.sin(midArcSweepCanvasRad);
+        
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        if (Math.abs(Math.cos(midArcSweepCanvasRad)) < 0.15) { 
+             textX += (label.length * 4) * (Math.cos(midArcSweepCanvasRad) > 0 ? 1 : -1); // Adjusted offset
+        }
+        if (Math.abs(Math.sin(midArcSweepCanvasRad)) < 0.15) { 
+            textY += 9 * (Math.sin(midArcSweepCanvasRad) >=0 ? 1 : -1) ; // Adjusted offset
+        }
+        ctx.fillText(label + "" + currentRelativeMathDeg.toFixed(0) + "°", textX, textY);
+        ctx.restore();
+    }
+
+
+    function drawArm() {
+        let L1 = parseFloat(len1Input.value);
+        let theta1Deg = parseFloat(angle1Input.value);
+        let L2 = parseFloat(len2Input.value);
+        let theta2Deg = parseFloat(angle2Input.value);
+        let L3 = parseFloat(len3Input.value);
+        let theta3Deg = parseFloat(angle3Input.value);
+        let currentTickSpacing = parseInt(tickSpacingInput.value);
+
+        if (isNaN(L1) || L1 < 0) L1 = 0; 
+        if (isNaN(theta1Deg)) theta1Deg = 0;
+        if (isNaN(L2) || L2 < 0) L2 = 0;
+        if (isNaN(theta2Deg)) theta2Deg = 0;
+        if (isNaN(L3) || L3 < 0) L3 = 0;
+        if (isNaN(theta3Deg)) theta3Deg = 0;
+        if (isNaN(currentTickSpacing) || currentTickSpacing < 10) currentTickSpacing = 50;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGridAndAxes(currentTickSpacing);
+
+        const theta1Rad = degreesToRadians(theta1Deg);
+        const theta2Rad = degreesToRadians(theta2Deg);
+        const theta3Rad = degreesToRadians(theta3Deg);
+
+        const x0_canvas = originX;
+        const y0_canvas = originY;
+
+        const x1_math = L1 * Math.cos(theta1Rad);
+        const y1_math = L1 * Math.sin(theta1Rad);
+        const x1_canvas = originX + x1_math;
+        const y1_canvas = originY - y1_math;
+
+        const totalAngle2Rad_math = theta1Rad + theta2Rad;
+        const x2_math = x1_math + L2 * Math.cos(totalAngle2Rad_math);
+        const y2_math = y1_math + L2 * Math.sin(totalAngle2Rad_math);
+        const x2_canvas = originX + x2_math;
+        const y2_canvas = originY - y2_math;
+
+        const totalAngle3Rad_math = totalAngle2Rad_math + theta3Rad;
+        const x_end_math = x2_math + L3 * Math.cos(totalAngle3Rad_math);
+        const y_end_math = y2_math + L3 * Math.sin(totalAngle3Rad_math);
+        const x_end_canvas = originX + x_end_math;
+        const y_end_canvas = originY - y_end_math;
+
+        ctx.lineWidth = 7; // Slightly thicker links
+        if (L1 > 0) {
+            ctx.beginPath(); ctx.moveTo(x0_canvas, y0_canvas); ctx.lineTo(x1_canvas, y1_canvas);
+            ctx.strokeStyle = 'rgba(0, 0, 255, 0.85)'; ctx.stroke();
+        }
+        if (L2 > 0) {
+            ctx.beginPath(); ctx.moveTo(x1_canvas, y1_canvas); ctx.lineTo(x2_canvas, y2_canvas);
+            ctx.strokeStyle = 'rgba(0, 128, 0, 0.85)'; ctx.stroke();
+        }
+        if (L3 > 0) {
+            ctx.beginPath(); ctx.moveTo(x2_canvas, y2_canvas); ctx.lineTo(x_end_canvas, y_end_canvas);
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.85)'; ctx.stroke();
+        }
+        
+        const jointRadius = 8; // Slightly larger joints
+        const endEffectorRadius = 7;
+        ctx.fillStyle = 'black';
+        ctx.beginPath(); ctx.arc(x0_canvas, y0_canvas, jointRadius, 0, 2 * Math.PI); ctx.fill();
+        if (L1 > 0) {
+          ctx.fillStyle = 'blue';
+          ctx.beginPath(); ctx.arc(x1_canvas, y1_canvas, jointRadius, 0, 2 * Math.PI); ctx.fill();
+        }
+        
+        let j2_drawn = false;
+        if (L2 > 0 && L1 > 0) {
+            ctx.fillStyle = 'green';
+            ctx.beginPath(); ctx.arc(x2_canvas, y2_canvas, jointRadius, 0, 2 * Math.PI); ctx.fill();
+            j2_drawn = true;
+        } else if (L2 > 0 && L1 === 0) { 
+            ctx.fillStyle = 'green';
+            ctx.beginPath(); ctx.arc(x2_canvas, y2_canvas, jointRadius, 0, 2 * Math.PI); ctx.fill();
+            j2_drawn = true;
+        }
+        
+        if (L1 > 0 || L2 > 0 || L3 > 0 || (L1===0 && L2===0 && L3===0) ){
+             ctx.fillStyle = 'red';
+             ctx.beginPath(); ctx.arc(x_end_canvas, y_end_canvas, endEffectorRadius, 0, 2 * Math.PI); ctx.fill();
+        }
+
+
+        if (showAnglesCheckbox.checked) {
+            const baseAngleIndicatorRadius = Math.max(18, Math.min(L1 || 35, L2 || 35, L3 || 35, currentTickSpacing) * 0.4); // Adjusted radius
+            if (L1 > 0) drawAngleIndicator(x0_canvas, y0_canvas, theta1Deg, 0, baseAngleIndicatorRadius, "θ₁", 'blue');
+            if (L2 > 0 && L1 >=0 ) drawAngleIndicator(x1_canvas, y1_canvas, theta2Deg, theta1Deg, baseAngleIndicatorRadius * 0.95, "θ₂", 'green');
+            if (L3 > 0 && (L1>=0 || L2>=0) && j2_drawn) drawAngleIndicator(x2_canvas, y2_canvas, theta3Deg, theta1Deg + theta2Deg, baseAngleIndicatorRadius * 0.9, "θ₃", 'red');
+        }
+
+        j1xDisplay.textContent = x1_math.toFixed(2);
+        j1yDisplay.textContent = y1_math.toFixed(2);
+        j2xDisplay.textContent = x2_math.toFixed(2);
+        j2yDisplay.textContent = y2_math.toFixed(2);
+        endEffectorXDisplay.textContent = x_end_math.toFixed(2);
+        endEffectorYDisplay.textContent = y_end_math.toFixed(2);
+        
+        angle1ValDisplay.textContent = `${theta1Deg}°`;
+        angle2ValDisplay.textContent = `${theta2Deg}°`;
+        angle3ValDisplay.textContent = `${theta3Deg}°`;
+    }
+
+    function setupSync(numberInput, sliderInput) {
+        numberInput.addEventListener('input', () => {
+            sliderInput.value = numberInput.value;
+            drawArm();
+        });
+        sliderInput.addEventListener('input', () => {
+            numberInput.value = sliderInput.value;
+            drawArm();
+        });
+    }
+
+    setupSync(len1Input, len1Slider);
+    setupSync(angle1Input, angle1Slider);
+    setupSync(len2Input, len2Slider);
+    setupSync(angle2Input, angle2Slider);
+    setupSync(len3Input, len3Slider);
+    setupSync(angle3Input, angle3Slider);
+
+    showGridCheckbox.addEventListener('change', drawArm);
+    showAnglesCheckbox.addEventListener('change', drawArm);
+    tickSpacingInput.addEventListener('input', drawArm); 
+    
+    // Adjust canvas size based on its container, then draw.
+    // This is a simple approach. For more robust resizing, use ResizeObserver.
+    function resizeCanvas() {
+        const canvasContainer = canvas.parentElement;
+        if (canvasContainer.clientWidth > 0 && window.getComputedStyle(canvasContainer).display !== 'none') {
+            // Keep canvas width/height attributes for coordinate system, but scale via CSS
+            // canvas.style.width = '100%';
+            // canvas.style.height = '100%'; 
+            // Or, if you want to actually change the drawing buffer size:
+            // canvas.width = canvasContainer.clientWidth;
+            // canvas.height = canvasContainer.clientHeight; // Or a fixed aspect ratio
+        }
+        drawArm();
+    }
+    
+    // window.addEventListener('resize', resizeCanvas); // Add resize listener
+    resizeCanvas(); // Initial draw with potential resize
+
+</script>
+
+<script src="./simulator-common.js?v=4"></script>
+</body>
+</html>

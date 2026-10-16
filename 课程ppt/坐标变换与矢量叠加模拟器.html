@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>坐标变换与矢量叠加模拟器 (终极版)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .simulator-container {
+            display: flex;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #d9d9d9;
+            width: 1300px;
+            height: 750px;
+        }
+
+        .control-panel {
+            width: 500px;
+            padding: 25px;
+            background-color: #fafafa;
+            border-right: 1px solid #e8e8e8;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .canvas-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+        }
+
+        canvas {
+            border: 1px solid #dcdcdc;
+            background-color: #fdfdfd;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            color: #003366;
+            margin: 0;
+            padding: 0;
+        }
+        
+        h1 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #005a9e;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 1.3em;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        h3 {
+            font-size: 1.1em;
+            color: #1d3557;
+            margin: 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #a8dadc;
+        }
+
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 1em; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        .value-display { font-weight: bold; color: #d62828; margin-left: 8px; font-family: 'Courier New', Courier, monospace; }
+        
+        .calculation-step {
+            font-family: 'Cambria', 'Times New Roman', Times, serif;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1.05em;
+            line-height: 1.6;
+            border: 1px solid #dee2e6;
+            margin-top: 10px;
+        }
+        .calculation-step .formula { font-weight: bold; }
+        .calculation-step .term { font-style: italic; color: #555; }
+        .calculation-step .value { font-weight: bold; color: #003366; }
+        .calculation-step .explanation { font-size: 0.9em; color: #495057; border-top: 1px dashed #ced4da; margin-top: 5px; padding-top: 5px; }
+        .calculation-step .final-value {
+             background-color: #fff9db;
+             border: 1px solid #ffe066;
+             padding: 2px 6px;
+             border-radius: 4px;
+             font-family: 'Courier New', Courier, monospace;
+             font-weight: bold;
+             color: #d9480f;
+        }
+        .color-key { display: inline-block; width: 12px; height: 12px; border: 1px solid rgba(0,0,0,0.2); margin-right: 5px; vertical-align: middle; }
+    </style>
+<link rel="stylesheet" href="./simulator-common.css?v=4">
+</head>
+<body class="sim-coord" data-simulator="coord">
+
+    <div class="simulator-container">
+        <div class="control-panel">
+            <h1>坐标变换与矢量叠加</h1>
+            
+            <h2>输入参数</h2>
+            <div style="display:flex; gap: 20px;">
+                <div style="flex:1;">
+                    <div class="control-group">
+                        <label for="L1">L₁: <span id="L1Value" class="value-display">150</span></label>
+                        <input type="range" id="L1" min="50" max="250" value="150">
+                    </div>
+                    <div class="control-group">
+                        <label for="theta1">θ₁: <span id="theta1Value" class="value-display">45</span> °</label>
+                        <input type="range" id="theta1" min="-180" max="180" value="45">
+                    </div>
+                </div>
+                <div style="flex:1;">
+                    <div class="control-group">
+                        <label for="L2">L₂: <span id="L2Value" class="value-display">120</span></label>
+                        <input type="range" id="L2" min="50" max="250" value="120">
+                    </div>
+                    <div class="control-group">
+                        <label for="theta2">θ₂: <span id="theta2Value" class="value-display">30</span> °</label>
+                        <input type="range" id="theta2" min="-180" max="180" value="30">
+                    </div>
+                </div>
+            </div>
+            
+            <h3>递推分析过程</h3>
+
+            <div class="calculation-step">
+                <h3>Step 1: 在全局坐标系 {0} 中求解 P₁</h3>
+                <div><span style="background-color: #005a9e;" class="color-key"></span><span class="formula">X₁</span> = L₁⋅cos(θ₁) = <span id="calcX1" class="value"></span></div>
+                <div><span style="background-color: #005a9e;" class="color-key"></span><span class="formula">Y₁</span> = L₁⋅sin(θ₁) = <span id="calcY1" class="value"></span></div>
+            </div>
+
+            <div class="calculation-step">
+                <h3>Step 2: 在局部坐标系 {1} 中求解矢量 P₁P₂</h3>
+                <div class="explanation">作用：将二连杆问题简化为单连杆问题，求解P₂相对P₁的位移。</div>
+                <div><span style="background-color: green;" class="color-key"></span><span class="formula">x'₂</span> = L₂⋅cos(θ₂) = <span id="calcLocalX2" class="value"></span></div>
+                <div><span style="background-color: purple;" class="color-key"></span><span class="formula">y'₂</span> = L₂⋅sin(θ₂) = <span id="calcLocalY2" class="value"></span></div>
+            </div>
+
+            <div class="calculation-step">
+                <h3>Step 3: 将矢量 P₁P₂ 变换到全局坐标系 {0}</h3>
+                <div class="explanation">通过旋转角度 (θ₁+θ₂) 将局部相对位移转换到全局。</div>
+                <div><span style="background-color: #f77f00;" class="color-key"></span><span class="formula">ΔX</span> = L₂⋅cos(θ₁+θ₂) = <span id="calcDeltaX" class="value"></span></div>
+                <div><span style="background-color: #fca311;" class="color-key"></span><span class="formula">ΔY</span> = L₂⋅sin(θ₁+θ₂) = <span id="calcDeltaY" class="value"></span></div>
+            </div>
+            
+            <div class="calculation-step">
+                <h3>Step 4: 最终矢量叠加 P₂ = P₁ + P₁P₂(global)</h3>
+                <div class="formula">X₂ = X₁ + ΔX = <span id="sumX" class="value"></span> = <span id="resultX" class="final-value"></span></div>
+                <div class="formula">Y₂ = Y₁ + ΔY = <span id="sumY" class="value"></span> = <span id="resultY" class="final-value"></span></div>
+            </div>
+        </div>
+        <div class="canvas-container">
+            <canvas id="simulatorCanvas" width="720" height="720"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const sliders = { L1: 'L1', theta1: 'theta1', L2: 'L2', theta2: 'theta2' };
+        const values = { L1: 'L1Value', theta1: 'theta1Value', L2: 'L2Value', theta2: 'theta2Value' };
+        const calcs = { 
+            X1: 'calcX1', Y1: 'calcY1', 
+            localX2: 'calcLocalX2', localY2: 'calcLocalY2',
+            deltaX: 'calcDeltaX', deltaY: 'calcDeltaY',
+            sumX: 'sumX', sumY: 'sumY',
+            resultX: 'resultX', resultY: 'resultY'
+        };
+
+        const dom = {};
+        for(let key in sliders) dom[key+'Slider'] = document.getElementById(sliders[key]);
+        for(let key in values) dom[key+'ValueSpan'] = document.getElementById(values[key]);
+        for(let key in calcs) dom[key+'Span'] = document.getElementById(calcs[key]);
+
+        const canvas = document.getElementById('simulatorCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function updateSimulator() {
+            const L1 = parseFloat(dom.L1Slider.value);
+            const theta1_deg = parseFloat(dom.theta1Slider.value);
+            const L2 = parseFloat(dom.L2Slider.value);
+            const theta2_deg = parseFloat(dom.theta2Slider.value);
+            
+            const theta1_rad = theta1_deg * Math.PI / 180;
+            const theta2_rad = theta2_deg * Math.PI / 180;
+            
+            const X1 = L1 * Math.cos(theta1_rad);
+            const Y1 = L1 * Math.sin(theta1_rad);
+            const local_X2 = L2 * Math.cos(theta2_rad);
+            const local_Y2 = L2 * Math.sin(theta2_rad);
+            const DeltaX = L2 * Math.cos(theta1_rad + theta2_rad);
+            const DeltaY = L2 * Math.sin(theta1_rad + theta2_rad);
+            const X2 = X1 + DeltaX;
+            const Y2 = Y1 + DeltaY;
+            
+            dom.L1ValueSpan.textContent = L1.toFixed(0);
+            dom.theta1ValueSpan.textContent = theta1_deg.toFixed(0);
+            dom.L2ValueSpan.textContent = L2.toFixed(0);
+            dom.theta2ValueSpan.textContent = theta2_deg.toFixed(0);
+            
+            dom.X1Span.textContent = X1.toFixed(2);
+            dom.Y1Span.textContent = Y1.toFixed(2);
+            dom.localX2Span.textContent = local_X2.toFixed(2);
+            dom.localY2Span.textContent = local_Y2.toFixed(2);
+            dom.deltaXSpan.textContent = DeltaX.toFixed(2);
+            dom.deltaYSpan.textContent = DeltaY.toFixed(2);
+            dom.sumXSpan.textContent = `${X1.toFixed(2)} + ${DeltaX.toFixed(2)}`;
+            dom.sumYSpan.textContent = `${Y1.toFixed(2)} + ${DeltaY.toFixed(2)}`;
+            dom.resultXSpan.textContent = X2.toFixed(2);
+            dom.resultYSpan.textContent = Y2.toFixed(2);
+            
+            drawCanvas({L1, theta1_rad, L2, theta2_rad}, {X1, Y1, X2, Y2, DeltaX, DeltaY, local_X2, local_Y2});
+        }
+
+        function drawCanvas(params, coords) {
+            const { theta1_rad, theta2_rad } = params;
+            const { X1, Y1, X2, Y2, DeltaX, DeltaY, local_X2, local_Y2 } = coords;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(1, -1);
+            
+            drawGrid();
+            drawAxes();
+
+            // Draw P1P2(global) vector addition triangle
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#f77f00'; // ΔX color
+            ctx.moveTo(X1, Y1); ctx.lineTo(X1 + DeltaX, Y1); ctx.stroke();
+            ctx.strokeStyle = '#fca311'; // ΔY color
+            ctx.moveTo(X1 + DeltaX, Y1); ctx.lineTo(X1 + DeltaX, Y1 + DeltaY); ctx.stroke();
+            
+            // Draw P1P2(local) components
+            ctx.save();
+            ctx.translate(X1, Y1);
+            ctx.rotate(theta1_rad);
+            ctx.strokeStyle = 'green'; // x'₂ color
+            ctx.moveTo(0,0); ctx.lineTo(local_X2, 0); ctx.stroke();
+            ctx.strokeStyle = 'purple'; // y'₂ color
+            ctx.moveTo(local_X2, 0); ctx.lineTo(local_X2, local_Y2); ctx.stroke();
+            ctx.restore();
+            ctx.setLineDash([]);
+            
+            // Draw link 1 (Blue)
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(X1, Y1);
+            ctx.strokeStyle = '#005a9e'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke();
+
+            // Draw link 2 (Red)
+            ctx.beginPath(); ctx.moveTo(X1, Y1); ctx.lineTo(X2, Y2);
+            ctx.strokeStyle = '#d62828'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.stroke();
+
+            // Draw joints
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, 2*Math.PI); ctx.fillStyle = '#003366'; ctx.fill();
+            ctx.beginPath(); ctx.arc(X1, Y1, 10, 0, 2*Math.PI); ctx.fillStyle = '#003366'; ctx.fill();
+            ctx.beginPath(); ctx.arc(X2, Y2, 10, 0, 2*Math.PI); ctx.fillStyle = '#a31e1e'; ctx.fill();
+            
+            // Draw angle arcs
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(0, 90, 158, 0.7)'; ctx.lineWidth = 1.5;
+            ctx.arc(0, 0, 40, 0, theta1_rad, theta1_rad < 0); ctx.stroke();
+
+            ctx.save();
+            ctx.translate(X1, Y1); ctx.rotate(theta1_rad);
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(214, 40, 40, 0.7)';
+            ctx.arc(0, 0, 40, 0, theta2_rad, theta2_rad < 0); ctx.stroke();
+            ctx.restore();
+
+            // Draw local frame {1} axes
+            ctx.save();
+            ctx.translate(X1, Y1); ctx.rotate(theta1_rad);
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(35,0); ctx.strokeStyle = "green"; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,35); ctx.strokeStyle = "purple"; ctx.stroke();
+            ctx.restore();
+
+            ctx.restore();
+
+            drawLabels(centerX, centerY, params, coords);
+        }
+        
+        function drawLabels(cx, cy, params, coords) {
+            const { theta1_rad, theta2_rad } = params;
+            const { X1, Y1, X2, Y2 } = coords;
+            
+            ctx.save();
+            ctx.font = 'bold 16px Arial';
+
+            // Point labels P0, P1, P2
+            ctx.fillStyle = '#333';
+            ctx.fillText('P₀', cx - 25, cy + 20);
+            ctx.fillText('P₁', cx + X1 + 10, cy - Y1 + 15);
+            ctx.fillText('P₂', cx + X2 + 10, cy - Y2 - 10);
+            
+            // Angle labels θ1, θ2
+            ctx.fillStyle = '#005a9e';
+            const r1 = 50;
+            ctx.fillText(`θ₁`, cx + r1 * Math.cos(theta1_rad / 2), cy - r1 * Math.sin(theta1_rad / 2));
+
+            ctx.fillStyle = '#d62828';
+            const theta2_label_angle = theta1_rad + (theta2_rad / 2);
+            const r2 = 50;
+            ctx.fillText(`θ₂`, cx + X1 + r2 * Math.cos(theta2_label_angle), cy - (Y1 + r2 * Math.sin(theta2_label_angle)));
+            
+            ctx.restore();
+        }
+        
+        function drawGrid() {
+            ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 0.5; const step = 50;
+            for (let x = step; x < canvas.width / 2; x += step) {
+                ctx.beginPath(); ctx.moveTo(x, -canvas.height / 2); ctx.lineTo(x, canvas.height / 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-x, -canvas.height / 2); ctx.lineTo(-x, canvas.height / 2); ctx.stroke();
+            }
+            for (let y = step; y < canvas.height / 2; y += step) {
+                ctx.beginPath(); ctx.moveTo(-canvas.width / 2, y); ctx.lineTo(canvas.width / 2, y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-canvas.width / 2, -y); ctx.lineTo(canvas.width / 2, -y); ctx.stroke();
+            }
+        }
+        
+        function drawAxes() {
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(-canvas.width / 2, 0); ctx.lineTo(canvas.width / 2, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, -canvas.height / 2); ctx.lineTo(0, canvas.height / 2); ctx.stroke();
+            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#333'; ctx.font = 'bold 16px Arial';
+            ctx.fillText('X', canvas.width - 20, canvas.height / 2 + 20); ctx.fillText('Y', canvas.width / 2 + 10, 20);
+            ctx.restore();
+        }
+
+        // Event Listeners
+        Object.values(sliders).forEach(id => {
+            document.getElementById(id).addEventListener('input', updateSimulator);
+        });
+
+        // Initial call
+        window.onload = updateSimulator;
+    </script>
+<script src="./simulator-common.js?v=4"></script>
+</body>
+</html>

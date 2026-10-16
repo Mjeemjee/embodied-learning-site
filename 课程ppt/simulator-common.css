@@ -1,0 +1,85 @@
+/* Shared controls and layout; original drawing coordinates remain unchanged. */
+:root{--lab-navy:#152e54;--lab-blue:#2464cd;--lab-teal:#087e85;--lab-border:#dce4ef}
+html{color-scheme:light;-webkit-text-size-adjust:100%}
+body{font-family:"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif!important;background-color:#f2f5fa!important;color:#25334a;line-height:1.7}
+body:not(.sim-3d){height:auto;min-height:100vh;overflow-y:auto}
+button,input,select{font-family:inherit;max-width:100%}
+button,a,input,select{touch-action:manipulation}
+button{min-height:40px}
+input[type=range]{accent-color:var(--lab-blue);min-height:32px}
+input[type=number]{min-height:40px;font-variant-numeric:tabular-nums}
+:focus-visible{outline:3px solid var(--lab-teal);outline-offset:3px}
+h1,h2,h3{color:var(--lab-navy)}
+h1{line-height:1.5}
+canvas{max-width:100%;height:auto}
+.simulator-container{max-width:calc(100vw - 32px);height:auto;min-height:600px;margin:20px 0}
+.control-panel,.canvas-container,.matrix-panel{box-sizing:border-box;min-width:0}
+.control-panel{flex-shrink:0}
+.canvas-container{padding:16px;align-self:stretch}
+.canvas-container canvas{max-width:100%;height:auto;aspect-ratio:1}
+.content-area{min-height:0;overflow:visible!important}
+.sim-help{box-sizing:border-box;padding:14px 16px;border:1px solid #c6dfe1;border-radius:8px;background:#edf7f7;color:#21545c;font-size:12px;line-height:1.8;margin:16px 0}
+.sim-help strong{display:block;font-size:12px;color:#09646a;margin-bottom:5px}
+.sim-presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.sim-presets button,.sim-reset{background:#fff;border:1px solid #b8ccd9;color:var(--lab-navy);border-radius:5px;padding:6px 10px;font-size:11px;min-height:38px;cursor:pointer}
+.sim-presets button:hover,.sim-reset:hover{background:#e2eef9;border-color:var(--lab-blue)}
+.sim-reset{margin:12px 0}
+.sim-input-note{display:block;min-height:18px;font-size:11px;color:#a23c26;margin:8px 0}
+.sim-load-status{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#f2f5fa;z-index:30;padding:24px;text-align:center;color:var(--lab-navy);font-size:14px}
+.sim-load-status[hidden]{display:none}
+.sim-load-status a{color:var(--lab-blue)}
+body.sim-color .panel{box-sizing:border-box}
+body.sim-color .row{align-items:center;gap:18px}
+body.sim-color .row label{min-width:155px;text-align:left}
+body.sim-color .row input{flex:1;min-width:0}
+body.sim-pid .container{align-items:stretch;width:min(1200px,100%);min-width:0}
+body.sim-pid .controls{flex:0 0 250px;box-sizing:border-box;min-width:0}
+body.sim-pid .chart-container{flex:1;min-width:0;height:450px;position:relative;box-sizing:border-box}
+body.sim-pid canvas{height:100%!important}
+.pid-metrics{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin:16px 0;color:var(--lab-navy)}
+.pid-metrics b{font-family:Consolas,monospace}
+body.sim-3d #infoPanel{box-sizing:border-box;max-height:calc(100dvh - 20px);width:330px;left:12px;top:12px}
+.panel-toggle{position:fixed;top:12px;right:12px;z-index:20;border:1px solid var(--lab-border);background:#fff;color:var(--lab-navy);border-radius:7px;padding:8px 15px;font-size:12px;box-shadow:0 3px 12px #152e5420;cursor:pointer}
+.sim-3d.panel-collapsed #infoPanel{display:none}
+.sim-3d #infoPanel h2{font-size:16px}
+.sim-3d #infoPanel .sim-help{margin:10px 0}
+@media(max-width:1100px){
+  .simulator-container{width:calc(100vw - 32px);min-height:0}
+  .control-panel{width:310px!important;padding:20px!important}
+  .simulator-container:has(.matrix-panel) .content-area{flex-wrap:wrap}
+  .matrix-panel{flex-basis:100%!important;border-left:0!important;border-top:1px solid var(--lab-border)}
+  body.sim-arm2d .container{grid-template-columns:1fr!important;grid-template-rows:auto auto auto auto!important}
+  body.sim-arm2d .controls,body.sim-arm2d #armCanvas,body.sim-arm2d .output,body.sim-arm2d .settings-panel{grid-column:1!important;min-width:0!important}
+  body.sim-arm2d .controls{grid-row:1!important}body.sim-arm2d #armCanvas{grid-row:2!important;height:auto!important;aspect-ratio:6/5}body.sim-arm2d .output{grid-row:3!important}body.sim-arm2d .settings-panel{grid-row:4!important}
+}
+@media(max-width:700px){
+  body:not(.sim-3d){padding:14px!important;margin:0!important;justify-content:flex-start!important;align-items:center!important;flex-direction:column!important;box-sizing:border-box}
+  body>h1{font-size:23px;text-align:left;width:100%;margin:6px 0 18px}
+  .simulator-container{width:100%;max-width:100%;height:auto!important;max-height:none!important;min-height:0;flex-direction:column!important;margin:0}
+  .content-area{flex-direction:column!important;flex-wrap:nowrap!important;overflow:visible!important;max-height:none!important}
+  .control-panel{width:100%!important;max-height:none!important;overflow:visible!important;border-right:0!important;border-bottom:1px solid var(--lab-border);padding:18px!important}
+  .control-panel h1{font-size:23px}.control-panel h2{font-size:17px}
+  .canvas-container{width:100%;min-width:0!important;flex:none!important;padding:12px}
+  .canvas-container canvas{display:block;width:100%;height:auto!important;max-height:none!important;aspect-ratio:1}
+  .matrix-panel{padding:16px!important;overflow-x:auto!important;overflow-y:visible!important;max-width:100%;flex:auto!important}
+  .formula-display{flex-wrap:wrap;gap:12px}.matrix-container{font-size:12px!important;margin:8px 0!important;max-width:100%;box-sizing:border-box}.matrix-container .matrix-cell{min-width:55px!important;padding:4px!important;font-size:12px}.matrix-op{font-size:22px!important}
+  .container,.page-wrapper{width:100%!important;max-width:100%;min-width:0;gap:14px!important;flex-direction:column!important;box-sizing:border-box}
+  .panel,.simulator-panel,.info-panel{width:100%!important;min-width:0;box-sizing:border-box;padding:18px!important}
+  .simulator-panel h1{font-size:22px}
+  #motor-visualization{width:250px!important;height:250px!important;margin:30px 0!important}
+  #motor-visualization .coil{width:50px;height:50px;font-size:18px}
+  .commutation-table,#sequence-table{font-size:11px;table-layout:fixed;width:100%}
+  .commutation-table th,.commutation-table td,#sequence-table th,#sequence-table td{padding:5px 2px!important;overflow-wrap:anywhere}
+  .controls{min-width:0}.controls button{font-size:13px!important}.speed-control{flex-wrap:wrap;font-size:12px}
+  .sim-transform .column,.sim-transform .control-group{min-width:0;width:100%;box-sizing:border-box}.sim-transform .controls-container{align-items:stretch;flex-direction:column}.sim-transform input[type=range]{display:block;width:100%}.sim-transform .matrix-cell,.sim-transform .vector-cell{font-size:12px;padding:6px;box-sizing:border-box}.sim-transform .formula-matrix-container{padding:10px}.sim-transform h1{font-size:23px}.sim-transform code{overflow-wrap:anywhere}
+  .sim-transform .matrix-grid{grid-template-columns:repeat(3,minmax(0,1fr));min-width:0;width:100%}.sim-transform .matrix-display{max-width:100%;min-width:0}.sim-transform .matrix-cell{min-width:0;overflow-wrap:anywhere}.sim-transform .calculation-layout{font-size:14px;gap:10px}
+  #motor{max-width:100%}
+  body.sim-pid .container{display:flex;flex-direction:column}.sim-pid .controls{flex:auto!important;padding:18px!important;gap:12px!important}body.sim-pid .chart-container{width:100%;height:280px;flex:none!important;padding:12px;order:-1;position:sticky;top:0;z-index:2;box-shadow:0 3px 14px #152e5412}.sim-pid h1{font-size:23px}.pid-metrics{font-size:11px}
+  body.sim-arm2d .container{width:100%!important}.sim-arm2d .controls,.sim-arm2d .output,.sim-arm2d .settings-panel{padding:18px!important;box-sizing:border-box}.sim-arm2d #armCanvas{box-sizing:border-box;width:100%!important;height:auto!important;aspect-ratio:6/5}
+  body.sim-color .box{width:100%;gap:12px}.sim-color .panel{width:100%!important;max-width:100%!important}.sim-color .row{flex-direction:column;align-items:stretch;gap:0}.sim-color .row label{font-size:12px;margin-top:12px}.sim-color h2{font-size:22px}.sim-color body>p{font-size:13px}
+  body.sim-3d #infoPanel{left:12px;right:12px;top:auto;bottom:12px;width:auto;max-height:40dvh;padding:14px;overscroll-behavior:contain}
+  .sim-3d .panel-toggle{top:12px;right:12px}.sim-3d #dhTable{font-size:11px}.sim-3d #infoPanel h2{font-size:15px}
+  body.sim-uart{display:block!important}.sim-uart .config{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:16px!important;box-sizing:border-box;width:100%}.sim-uart .config input,.sim-uart .config select{width:100%;box-sizing:border-box;min-height:40px;margin:0}.sim-uart .output{box-sizing:border-box;width:100%;padding:14px!important}.sim-uart .waveform-container{max-width:100%;box-sizing:border-box}.sim-uart pre{white-space:pre-wrap;overflow-wrap:anywhere}.sim-uart h1{font-size:23px}
+}
+@media(max-width:360px){#motor-visualization{width:220px!important;height:220px!important}.control-panel{padding:14px!important}.sim-presets button{font-size:10px;padding:5px 8px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}

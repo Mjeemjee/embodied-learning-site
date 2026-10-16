@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>颜色过滤模拟器</title>
+<style>
+body{font-family:'Microsoft YaHei',sans-serif;background:#f0f2f5;margin:0;display:flex;flex-direction:column;align-items:center;padding:24px;}
+h2{color:#1a2f63;}
+.box{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
+.panel{background:#fff;border-radius:12px;padding:18px;box-shadow:0 4px 16px rgba(0,0,0,.1);width:340px;text-align:center;}
+canvas{width:100%;border-radius:8px;background:#ddd;}
+input[type=range]{width:100%;}
+label{display:block;margin-top:8px;font-size:.9em;color:#555;}
+.row{display:flex;justify-content:space-between;}
+</style><link rel="stylesheet" href="./simulator-common.css?v=4">
+</head>
+<body class="sim-color" data-simulator="color">
+<h2>🌈 颜色过滤模拟器（迷你版）</h2>
+<p>拖动滑杆，选择要保留的颜色范围，看看效果 —— H 使用 0～179 刻度。下限大于上限时，会合并色相首尾两段，以选中红色。</p>
+<p id="maskSummary" role="status" aria-live="polite"></p>
+<div class="box">
+  <div class="panel"><h3>原图（彩色）</h3><canvas id="c1" width="300" height="200"></canvas></div>
+  <div class="panel"><h3>过滤结果（黑白掩码）</h3><canvas id="c2" width="300" height="200"></canvas></div>
+</div>
+<div class="panel" style="width:700px;max-width:96vw;margin-top:16px;">
+  <div class="row"><label>色相下限 H: <b id="h1v">170</b></label><input id="h1" type="range" min="0" max="179" value="170"></div>
+  <div class="row"><label>色相上限 H: <b id="h2v">10</b></label><input id="h2" type="range" min="0" max="179" value="10"></div>
+  <div class="row"><label>饱和度下限 S: <b id="sv">100</b></label><input id="s" type="range" min="0" max="255" value="100"></div>
+  <div class="row"><label>明度下限 V: <b id="vv">100</b></label><input id="v" type="range" min="0" max="255" value="100"></div>
+</div>
+<script>
+const c1=document.getElementById('c1'),c2=document.getElementById('c2');
+const ctx1=c1.getContext('2d'),ctx2=c2.getContext('2d');
+// 画一个简单场景：红苹果、绿叶子、蓝背景
+function drawScene(){
+  ctx1.fillStyle='#3a7bd5';ctx1.fillRect(0,0,300,200);
+  ctx1.fillStyle='#2e8b57';ctx1.beginPath();ctx1.ellipse(70,60,28,40,0,0,Math.PI*2);ctx1.fill();
+  ctx1.fillStyle='#e63946';ctx1.beginPath();ctx1.arc(150,120,45,0,Math.PI*2);ctx1.fill();
+  ctx1.fillStyle='#b91c2c';ctx1.beginPath();ctx1.arc(140,110,10,0,Math.PI*2);ctx1.fill();
+  ctx1.fillStyle='#e63946';ctx1.beginPath();ctx1.arc(230,80,35,0,Math.PI*2);ctx1.fill();
+  ctx1.fillStyle='#8d5524';ctx1.fillRect(140,155,20,35);
+  ctx1.fillStyle='#f4d35e';ctx1.fillRect(0,175,300,25);
+}
+// 简易 RGB->HSV
+function rgb2hsv(r,g,b){
+  r/=255;g/=255;b/=255;
+  const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
+  let h=0;
+  if(d!==0){
+    if(max===r)h=((g-b)/d)%6;
+    else if(max===g)h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h*=60; if(h<0)h+=360;
+  }
+  const s=max===0?0:d/max;
+  return [Math.floor(h/2),Math.round(s*255),Math.round(max*255)];
+}
+function draw(){
+  const h1=+document.getElementById('h1').value, h2=+document.getElementById('h2').value;
+  const smin=+document.getElementById('s').value, vmin=+document.getElementById('v').value;
+  document.getElementById('h1v').textContent=h1;
+  document.getElementById('h2v').textContent=h2;
+  document.getElementById('sv').textContent=smin;
+  document.getElementById('vv').textContent=vmin;
+  drawScene();
+  const img=ctx1.getImageData(0,0,300,200), d=img.data;
+  const out=ctx2.createImageData(300,200), o=out.data;
+  let selected=0;
+  for(let i=0;i<d.length;i+=4){
+    const [h,s,v]=rgb2hsv(d[i],d[i+1],d[i+2]);
+    const inHue=(h>=h1&&h<=h2)||(h1>h2&&(h>=h1||h<=h2));
+    const ok=inHue && s>=smin && v>=vmin;
+    if(ok){selected++;o[i]=255;o[i+1]=255;o[i+2]=255;o[i+3]=255;}
+    else {o[i]=0;o[i+1]=0;o[i+2]=0;o[i+3]=255;}
+  }
+  ctx2.putImageData(out,0,0);
+  document.getElementById("maskSummary").textContent="已保留 "+(selected/600).toFixed(1)+"% 的像素 · 白色为通过筛选的区域";
+}
+['h1','h2','s','v'].forEach(id=>document.getElementById(id).addEventListener('input',draw));
+draw();
+</script>
+<script src="./simulator-common.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#15233b">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>具身智能学习系统 · 从代码到行动</title>
+<meta name="description" content="14 节零基础课程、13 个互动实验，逐步理解机器视觉、机械臂运动学、坐标变换与 PID 控制。支持离线学习和进度备份。">
+<link rel="stylesheet" href="css/style.css?v=4">
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">跳到主要内容</a>
+  <noscript><p class="noscript-tip">启用 JavaScript 后可以运行示例、打开实验并保存进度。课程正文仍可阅读。</p></noscript>
+  <button class="hamburger" onclick="toggleSidebar()" aria-label="打开课程目录" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">&#129302;</div>
+      <div class="brand-name">具身智能<br><span>零基础学习系统</span></div>
+    </div>
+    <nav class="side-nav" id="sideNav" aria-label="课程与实验导航">
+      <a href="#roadmap" class="nav-item">&#128506;&#65039; 学习地图</a>
+      <a href="#lab" class="nav-item">&#9881; 互动实验室</a>
+      <a href="#report" class="nav-item">&#128202; 学习报告</a>
+      <div class="nav-section-label">&#128214; 前置基础（零基础必看）</div>
+      <a href="#what-is-code" class="nav-item">0.1 什么是代码</a>
+      <a href="#what-is-ai" class="nav-item">0.2 什么是 AI</a>
+      <a href="#python-intro" class="nav-item">0.3 Python 快速入门</a>
+      <a href="#numpy-intro" class="nav-item">0.4 数组与矩阵启蒙</a>
+      <div class="nav-section-label">&#127919; 核心课程</div>
+      <a href="#concept" class="nav-item">1. 什么是具身智能</a>
+      <a href="#vision" class="nav-item">2. 机器看见 · OpenCV</a>
+      <a href="#ml" class="nav-item">3. 机器学习入门</a>
+      <a href="#arm" class="nav-item">4. 机械臂 · 运动学</a>
+      <a href="#coord" class="nav-item">5. 坐标变换</a>
+      <a href="#control" class="nav-item">6. 控制稳定 · PID</a>
+      <a href="#brain" class="nav-item">7. 大脑 · 大模型</a>
+      <a href="#sound" class="nav-item">8. 听和说 · ASR/TTS</a>
+      <a href="#connect" class="nav-item">9. 通讯与 MCP</a>
+      <a href="#learn" class="nav-item">10. 机器怎么学习</a>
+      <a href="#resources" class="nav-item">&#128451;&#65039; 资料库</a>
+      <a href="#quiz-panel" class="nav-item nav-quiz">&#127919; 结业小测验</a>
+    </nav>
+    <div class="side-progress">
+      <div class="side-progress-label">你的学习进度</div>
+      <div class="side-progress-bar"><div id="sideProgBar" class="progress-fill"></div></div>
+      <div class="side-progress-text" id="sideProgText">0 / 30 分</div>
+      <label class="guide-toggle">
+        <input type="checkbox" id="guideToggle" onclick="toggleGuide()">
+        <span>&#128274; 闯关模式</span>
+      </label>
+      <a class="side-report-link" href="#report">查看报告与备份 →</a>
+    </div>
+  </aside>
+
+  <main class="content" id="mainContent" tabindex="-1">
+    <div class="page-topbar"><a class="topbar-home" href="#roadmap">具身智能 / 学习工作台</a><button id="readingToggle" class="text-button" onclick="toggleReading()" aria-pressed="false">展开全部课程</button></div>
+    <header class="hero" id="homeHero">
+      <div class="hero-copy"><span class="eyebrow">观察 · 理解 · 动手验证</span><h1>从第一行代码，<br>到让机械臂动起来。</h1><p>不只读懂概念。用 14 节入门课和 13 个互动实验，走完机器「看、想、动」的第一段路。</p><div class="hero-actions"><a class="btn" id="resumeLink" href="#what-is-code">开始第一课 →</a><a class="btn btn-secondary" href="#lab">先试一个实验 ↗</a></div><p class="resume-hint" id="resumeHint">下一步：什么是代码</p></div>
+      <div class="hero-experiment"><div class="experiment-heading"><span>让角度变成位置</span><small>单连杆 · 实时演示</small></div>
+        <svg viewBox="0 0 300 225" role="img" aria-label="拖动下方滑杆，观察连杆末端随角度移动"><defs><pattern id="heroGrid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M 25 0 L 0 0 0 25" fill="none" stroke="#dce7f2" stroke-width="1"/></pattern></defs><rect width="300" height="225" fill="url(#heroGrid)"/><path d="M30 178H275M75 205V20" fill="none" stroke="#9badc4" stroke-width="1.5"/><text x="275" y="195" fill="#5a6b8c" font-size="12">X</text><text x="60" y="20" fill="#5a6b8c" font-size="12">Y</text><path d="M50 194H100L90 178H60Z" fill="#15233b"/><line id="heroLink" x1="75" y1="178" x2="160" y2="93" stroke="#2464cd" stroke-width="10" stroke-linecap="round"/><circle cx="75" cy="178" r="9" fill="#15233b"/><circle id="heroJoint" cx="160" cy="93" r="8" fill="#087e85"/><text x="175" y="30" fill="#087e85" font-size="13" id="heroXY">X 86 / Y 86</text></svg>
+        <label for="heroAngle">关节角度 <output id="heroAngleValue" for="heroAngle">45°</output></label><input id="heroAngle" type="range" min="0" max="160" value="45"><small>拖动滑杆，观察末端如何移动。</small>
+      </div>
+    </header>
+    <div id="lessonTools" class="lesson-tools" hidden><a href="#roadmap">← 学习地图</a><span id="lessonPosition"></span></div>
+    <section id="roadmap" class="module roadmap-module">
+      <div class="section-heading"><div><span class="eyebrow">一条能走通的学习路线</span><h2>先打基础，再连接「看、想、动」</h2></div><span class="count-label">14 节课程</span></div>
+      <a class="foundation-link" href="#what-is-code"><span class="foundation-index">0.1—0.4</span><span><strong>从零开始</strong><small>代码是什么 → 认识 AI → Python → 数组与矩阵</small></span><span aria-hidden="true">→</span></a>
+      <div class="learning-path"><a href="#vision"><span class="path-word">看</span><h3>感知世界</h3><p>机器视觉与数据<br>让机器找到颜色和形状</p><small>探索视觉课程 →</small></a><a href="#arm"><span class="path-word">想</span><h3>计算与决策</h3><p>运动学与坐标变换<br>从目标位置计算动作</p><small>探索机械臂课程 →</small></a><a href="#control"><span class="path-word">动</span><h3>稳定执行</h3><p>反馈控制与电机<br>让动作准确、稳定</p><small>探索控制课程 →</small></a></div>
+      <div class="home-progress"><span id="homeProgress">已学完 0 / 14 节 · 自测通过 0 / 14</span><a href="#report">查看学习报告 →</a></div>
+      <p class="report-hint">建议零基础按目录顺序学习；闯关模式会在完成打卡与自测后解锁下一节。</p>
+    </section>
+
+    <section id="report" class="module report-module">
+      <span class="eyebrow">每一点进步，都有记录</span><h2>学习报告</h2><div id="reportContent"></div>
+      <div class="backup-tools"><button class="btn btn-secondary" onclick="exportProgress()">导出进度</button><label class="btn btn-secondary import-label">导入进度<input type="file" accept="application/json,.json" onchange="importProgress(this)"></label><button class="text-button danger-button" onclick="resetProgress()">重置学习记录</button></div>
+      <p class="report-hint">记录保存在当前浏览器中。换设备或清理浏览器前，请导出备份。旧版记录会保留，但未记录过的首次答题结果无法补算。</p>
+    </section>
+
+    <section id="what-is-code" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch-pre">前置 0.1</span> 什么是代码？编程是什么？</h2>
+      <p>很多人觉得编程很神秘。其实<strong>代码就是「写给电脑的说明书」</strong>——你告诉电脑做什么，它照做，做完把结果告诉你。</p>
+      <div class="example">
+        <b>&#127804; 生活类比：给室友留便条</b>
+        <p>你在冰箱上贴便条：「冰箱里有蛋糕，饿了就吃一块」。这就是一条<strong>指令</strong>。代码也一样——只是你把指令写进一个文件，电脑（Python）一行行读、一行行执行。</p>
+      </div>
+      <h3>你的第一行代码</h3>
+      <p class="runtime-note">页面支持运行本课固定示例。复制后也可在 Python 中练习；完整项目请使用本地 Python 环境。</p>
+      <p>下面这个叫 Hello World——全世界程序员的第一课。点「运行看看」，看代码怎么"说话"：</p>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; hello.py</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 这是我的第一行代码！
+# 井号 # 开头的是"注释"——电脑会跳过，不执行
+
+print("Hello World！你好，世界！")
+print("1 + 2 =", 1 + 2)
+
+# 变量 = 贴了标签的盒子，可以放东西
+名字 = "小明"
+年龄 = 10
+print("我叫", 名字, "，今年", 年龄, "岁")
+
+# 还可以改里面的东西
+年龄 = 11
+print("过了一年，我", 年龄, "岁了")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>三个最重要的概念</h3>
+      <div class="card">
+        <p><b>① 变量 = 贴了标签的盒子</b>：<code>x = 5</code> 意思是"拿一个盒子，贴上标签 x，里面放数字 5"。</p>
+        <p><b>② 函数 = 一个可重复使用的步骤</b>：<code>print()</code> 就是函数——它的工作是"把括号里的东西显示在屏幕上"。</p>
+        <p><b>③ 注释 = 写给人类看的</b>：<code>#</code> 开头那一行，电脑当没看见，方便你以后回来看懂。</p>
+      </div>
+      <div class="tip">&#128161; <b>记住一件事就够了</b>：编程不是背诵，而是「我想让电脑做什么 &#8594; 用代码写出来 &#8594; 跑一下看看」。刚开始写错很正常，每个程序员都是这么过来的。</div>
+      <div class="selfcheck sc" data-answer="1" data-explain="代码就是写给电脑的指令清单。类比：给室友留便条、做菜的食谱。">
+        <p class="sc-q">&#128221; 本节自测：代码最像生活中的什么？</p>
+        <label><input type="radio" name="sc-what-is-code" value="0"> 一本小说</label>
+        <label><input type="radio" name="sc-what-is-code" value="1"> 写给电脑的说明书 / 指令清单</label>
+        <label><input type="radio" name="sc-what-is-code" value="2"> 手机里的照片</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="what-is-ai" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch-pre">前置 0.2</span> 什么是人工智能（AI）？</h2>
+      <p>人工智能研究如何让计算机完成感知、推理和决策等任务。本课程先从机器学习入门：<strong>让计算机从数据里学习规律。</strong></p>
+      <div class="example">
+        <b>&#127804; 识别猫和狗</b>
+        <p>传统编程：你写几百条规则——「耳朵尖的是猫、耳朵圆的是狗、鼻子黑的……」——永远写不完。<br>
+        机器学习（AI）：你给电脑看 10000 张猫的照片和 10000 张狗的照片，它自己找出区别。你写的代码只有几行，剩下的交给数据。</p>
+      </div>
+      <h3>AI 不是魔法——三步拆解</h3>
+      <div class="card">
+        <p><b>① 准备数据</b>：收集「输入 &#8594; 正确答案」的例子（猫照片 &#8594; 猫、狗照片 &#8594; 狗）</p>
+        <p><b>② 训练模型</b>：让电脑对着数据一遍遍练习，自己调整内部参数</p>
+        <p><b>③ 推理预测</b>：训练好后，给它一张新照片，它说出是猫还是狗</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 理解 AI 的思路</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># AI 学习的核心思路
+
+# 第1步：创建一个空模型（参数随机）
+print("第1步: 创建空白大脑")
+
+# 第2步：喂数据训练
+print("第2步: 用 10000 个例子训练")
+训练次数 = 5
+for i in range(训练次数):
+    正确率 = 20 + i * 15
+    print("  第", i+1, "轮训练, 正确率:", 正确率, "%")
+
+# 第3步：推理
+print("第3步: 输入一张新图片")
+print("  模型输出: 0.97 概率是猫")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <div class="tip">&#128161; <b>记住</b>：AI 不是「发明了新规则」，而是「从例子里学到了规律」。就像你小时候看多了猫，自然就知道长什么样的动物叫猫，不需要别人一条条教你「耳朵要尖、胡子要长」。</div>
+      <div class="selfcheck sc" data-answer="0" data-explain="AI/机器学习的核心是「从数据中学习规律」，而不是人手写规则。">
+        <p class="sc-q">&#128221; 本节自测：AI 和传统编程最大的区别是什么？</p>
+        <label><input type="radio" name="sc-what-is-ai" value="0"> 从数据中自动学习规律，而不是人手写规则</label>
+        <label><input type="radio" name="sc-what-is-ai" value="1"> 运行速度更快</label>
+        <label><input type="radio" name="sc-what-is-ai" value="2"> 可以自动写小说</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+    <section id="python-intro" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch-pre">前置 0.3</span> Python 快速入门</h2>
+      <p>Python 是目前学 AI 最友好的语言——语法接近英语，读起来像伪代码。这一节用 10 分钟掌握最核心的部分。</p>
+      <h3>① 变量和基本运算</h3>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 变量运算</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 变量：给数据贴标签
+x = 10
+y = 3
+
+# 四则运算
+print("加法:", x + y)
+print("减法:", x - y)
+print("乘法:", x * y)
+print("除法:", x / y)
+print("整除:", x // y)
+print("余数:", x % y)
+
+# 字符串（文字）
+名字 = "机器人"
+print("你好，" + 名字 + "！")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>② 列表——装很多东西的盒子</h3>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 列表操作</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 列表：用 [] 装一组东西
+关节角度 = [30, 45, 60, 90]
+print("关节角度列表:", 关节角度)
+print("第1个关节:", 关节角度[0])
+print("第3个关节:", 关节角度[2])
+print("总共有几个关节:", len(关节角度))
+
+# 遍历列表：一个一个拿出来
+for 角度 in 关节角度:
+    print("这个关节转了", 角度, "度")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>③ 条件判断：让代码学会「如果…就…」</h3>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 条件判断</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># if / elif / else = 如果 / 否则如果 / 否则
+距离 = 15
+
+if 距离 < 10:
+    print("太近了！后退！")
+elif 距离 < 20:
+    print("距离刚好，保持")
+else:
+    print("太远了，前进")
+
+# 循环：重复做一件事
+print("倒计时开始：")
+for i in range(5, 0, -1):
+    print(i)
+print("发射！")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>④ 函数：打包一段代码，随时调用</h3>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 定义函数</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># def 定义函数 = 给一段代码起名字
+def 计算扭矩(力, 臂长):
+    扭矩 = 力 * 臂长
+    return 扭矩
+
+# 调用函数
+结果1 = 计算扭矩(10, 0.5)
+结果2 = 计算扭矩(15, 0.3)
+print("扭矩1:", 结果1, "Nm")
+print("扭矩2:", 结果2, "Nm")
+
+# 自带函数
+print("绝对值:", abs(-8))
+print("最大值:", max(1, 5, 3))</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <div class="tip">&#128161; <b>Python 速查卡</b>：<code>print()</code> 打印、<code>变量 = 值</code> 赋值、<code>[]</code> 列表、<code>for x in 列表:</code> 遍历、<code>if / elif / else</code> 条件、<code>def 函数名():</code> 定义函数。这些概念能帮助你读懂后面课程中的基础示例；真实项目还会用到库、数据和工程知识。</div>
+      <div class="selfcheck sc" data-answer="0" data-explain="变量、列表、if 判断、for 循环、函数定义——这 5 个概念就够用了，不需要背语法，需要时查就行。">
+        <p class="sc-q">&#128221; 本节自测：学完这节，你觉得 Python 最核心的概念是？</p>
+        <label><input type="radio" name="sc-python-intro" value="0"> 变量、列表、if 判断、for 循环、函数定义</label>
+        <label><input type="radio" name="sc-python-intro" value="1"> 只有 print 一个命令</label>
+        <label><input type="radio" name="sc-python-intro" value="2"> 需要把整本语法书背下来</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="numpy-intro" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch-pre">前置 0.4</span> 数组与矩阵启蒙 · 用代码做数学</h2>
+      <p>机械臂动起来，靠的是数学——关节怎么转、手到哪了，全都用<strong>矩阵（数字表格）</strong>算出来的。这节先用 Python 列表理解数组与矩阵；NumPy 是以后高效完成这些运算的工具。</p>
+      <div class="example">
+        <b>&#127804; 不需要懂大学数学</b>
+        <p>你暂时只需要知道三样东西：<br>
+        ① <b>数组（array）</b> = 一行数字，代表"关节角度"或"坐标位置"<br>
+        ② <b>矩阵乘法</b> = 把数字按规则乘起来，把"旋转"和"平移"合成一步<br>
+        ③ <b>NumPy</b> = 帮你快速计算这些的工具，不用自己写循环</p>
+      </div>
+      <h3>① 创建数组：一行数字的容器</h3>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 创建数组</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 数组 = 一行数字
+关节角度 = [30, 45, 60]
+位置坐标 = [10, 20, 5]
+
+print("关节角度:", 关节角度)
+print("位置坐标:", 位置坐标)
+
+# 数组加减：对应位置相加减
+新角度 = [关节角度[0]+5, 关节角度[1]+5, 关节角度[2]+5]
+print("每个关节+5度:", 新角度)
+
+# 数组乘法：每个元素乘以同一个数
+角度翻倍 = [关节角度[0]*2, 关节角度[1]*2, 关节角度[2]*2]
+print("角度翻倍:", 角度翻倍)</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>② 二维数组：像 Excel 表格一样</h3>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 二维数组（矩阵）</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 矩阵 = 二维数组 = 有行有列的数字表格
+矩阵 = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+]
+
+print("这是一个 3x3 矩阵:")
+for 行 in 矩阵:
+    print(行)
+
+# 取第 1 行第 2 列（从 0 开始数！）
+print("第1行第2列:", 矩阵[0][1])
+print("第2行:", 矩阵[1])</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>③ 矩阵乘法的直观理解</h3>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 矩阵乘法（简化）</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 旋转矩阵 x 位置向量 = 旋转后的新位置
+# 这是机械臂运动学的核心！
+
+旋转 = [[0, -1], [1, 0]]
+位置 = [3, 1]
+
+新x = 旋转[0][0]*位置[0] + 旋转[0][1]*位置[1]
+新y = 旋转[1][0]*位置[0] + 旋转[1][1]*位置[1]
+
+print("原始位置: (", 位置[0], ",", 位置[1], ")")
+print("旋转90度后: (", 新x, ",", 新y, ")")
+print("(3,1) 逆时针转90度 变成 (-1,3)")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <div class="tip">&#128161; <b>这一节的底线</b>：你不需要现在就完全理解矩阵乘法。只需记住——机械臂的每个关节旋转，在数学上都等于「用一张数字表格去乘坐标」。后面学坐标变换时会用模拟器直观演示。</div>
+      <div class="selfcheck sc" data-answer="0" data-explain="NumPy 是 Python 里用于科学计算的核心库，专门高效处理数组和矩阵运算——正是机械臂运动学、坐标变换所需。">
+        <p class="sc-q">&#128221; 本节自测：NumPy 在具身智能里主要用来干什么？</p>
+        <label><input type="radio" name="sc-numpy-intro" value="0"> 高效地处理数组和矩阵计算</label>
+        <label><input type="radio" name="sc-numpy-intro" value="1"> 画图</label>
+        <label><input type="radio" name="sc-numpy-intro" value="2"> 给机器人充电</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+    <section id="concept" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 1 节</span> 什么是具身智能？</h2>
+      <p>先别被"具身"吓到。它拆开就是两个词：</p>
+      <ul>
+        <li><b>具身（Embodied）</b>：有"身体"的</li>
+        <li><b>智能（Intelligence）</b>：会思考、会学习</li>
+      </ul>
+      <p>合起来就是：<strong>让一个有机器"身体"的家伙去感知世界、做出动作，而不是只在电脑里打字。</strong></p>
+      <div class="example">
+        <b>&#127804; 最简单的例子：让机器人帮你拿水杯</b>
+        <ol>
+          <li>&#128247; <b>看</b>（感知）：摄像头拍到你桌上的水杯在哪</li>
+          <li>&#129504; <b>想</b>（决策）：判断位置 &#8594; 计算机械臂怎么伸过去、用多大力</li>
+          <li>&#9995; <b>动</b>（行动）：驱动电机转动关节，抓住水杯递给你</li>
+        </ol>
+      </div>
+      <div class="card">
+        <b>&#128260; 完整闭环</b>
+        <p>看 &#8594; 想 &#8594; 动 不是一次性的，而是不断循环。发现水杯滑了？立刻调整力气。这叫"感知-决策-执行"闭环。</p>
+      </div>
+      <h3>和普通 AI（比如聊天机器人）有什么不同？</h3>
+      <div class="card">
+        <p><b>普通 AI</b>：输入文字 &#8594; 输出文字。它活在屏幕里，不会影响真实世界。</p>
+        <p><b>具身智能</b>：输入传感器数据（摄像头、力传感器）&#8594; 输出真实动作（转动关节、抓取）。<strong>它会改变物理世界，而且动作做错了会真的把杯子打碎。</strong></p>
+      </div>
+      <div class="selfcheck sc" data-answer="1" data-explain="关键不是背公式，而是理解「感知→决策→执行」的闭环，让机器人自己去与真实世界互动。">
+        <p class="sc-q">&#128221; 本节自测：学具身智能，最关键的能力是？</p>
+        <label><input type="radio" name="sc-concept" value="0"> 背很多公式</label>
+        <label><input type="radio" name="sc-concept" value="1"> 自己动手与真实世界互动（看-想-动）</label>
+        <label><input type="radio" name="sc-concept" value="2"> 把代码写得漂亮</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="vision" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 2 节</span> 机器看见 · OpenCV</h2>
+      <p>人类用眼睛看世界，机器人用<strong>摄像头 + OpenCV</strong>。OpenCV 是一个开源的计算机视觉库——你把图片给它，它能找出颜色、形状、边缘。</p>
+      <div class="example">
+        <b>&#127804; 怎么让机器"看见"一个红色的球？</b>
+        <p>不是教它"什么是红"——而是：把照片里每个像素的颜色值读出来，如果红色分量远大于绿色和蓝色，这个像素就是红的。把所有"红像素"圈出来，就是球的位置。</p>
+      </div>
+      <h3>为什么用 HSV 而不是 RGB？</h3>
+      <div class="card">
+        <p><b>RGB</b>：用红、绿、蓝三个数值表示颜色。问题是——光照一变，三个数值全变，很难设范围。</p>
+        <p><b>HSV</b>：<b>H</b>色调（什么颜色）、<b>S</b>饱和度（多鲜艳）、<b>V</b>明度（多亮）。把"颜色"和"亮度"分开了！所以只要盯住 H，不管灯亮灯暗都能找到红色。</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 颜色过滤的思路</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># OpenCV 颜色过滤的核心思路
+
+# 1. 读取图片（或打开摄像头）
+# 2. 把 BGR 转成 HSV
+# 3. 设定颜色的范围（例如红色）
+# 4. 找出所有在范围内的像素
+
+print("OpenCV 工作流程：")
+print("图片 -> 转 HSV -> 设定颜色范围")
+print("     -> 得到掩膜(白色=目标) -> 找到目标")
+print("")
+print("HSV 三要素：") 
+print("  H 色调: 0度=红, 120度=绿, 240度=蓝")
+print("  S 饱和度: 颜色纯度")
+print("  V 明度: 亮度")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>OpenCV 还能做什么？</h3>
+      <ul>
+        <li>&#128269; <b>边缘检测</b>：找出物体的轮廓（Canny 算法）</li>
+        <li>&#128208; <b>形状识别</b>：判断是圆形还是方形（Hough 变换）</li>
+        <li>&#128100; <b>人脸检测</b>：Haar 级联分类器</li>
+        <li>&#127919; <b>目标跟踪</b>：锁定一个物体并跟住它</li>
+      </ul>
+      <button type="button" class="simulator" onclick="openSim('color')">&#127918; 动手：玩颜色过滤模拟器</button>
+      <div class="selfcheck sc" data-answer="1" data-explain="OpenCV 处理图像时一般先转 HSV 颜色空间，因为 HSV 把颜色和亮度分开，比 RGB 更容易设定颜色范围。">
+        <p class="sc-q">&#128221; 本节自测：OpenCV 做颜色过滤时，通常先要把图片转成什么颜色空间？</p>
+        <label><input type="radio" name="sc-vision" value="0"> RGB</label>
+        <label><input type="radio" name="sc-vision" value="1"> HSV</label>
+        <label><input type="radio" name="sc-vision" value="2"> PDF</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+    <section id="ml" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 3 节</span> 机器学习入门</h2>
+      <p>为什么机器人需要"学习"？因为真实世界太复杂，人手写规则永远写不完。机器学习就是<strong>让机器自己从数据里找规律。</strong></p>
+      <div class="example">
+        <b>&#127804; 让机械臂学会抓东西</b>
+        <p>传统编程：写"圆杯子用这种手势、方杯子用那种手势、软的轻一点、滑的紧一点……"——写不完。<br>
+        机器学习：给机械臂看 10000 个成功和 10000 个失败的抓取例子，它自己学会怎么抓。</p>
+      </div>
+      <h3>两种主流方法</h3>
+      <div class="card">
+        <p><b>监督学习</b>：有标准答案的数据。告诉机器"这是猫、那是狗"。适合分类、预测。</p>
+        <p><b>强化学习</b>：不给答案，只给奖励——做对加分、做错扣分。适合"走路、抓东西"这类没有唯一正确答案的任务。</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 最简单的"学习"：找规律</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 最简机器学习：根据身高预测体重
+# 思路：找一条直线 y = w*x + b 贴近所有数据点
+
+身高 = [160, 165, 170, 175, 180]
+体重 = [55, 60, 63, 70, 75]
+
+# 假设已经"学"出了参数
+w = 0.9
+b = -88
+
+def 预测(高):
+    return w * 高 + b
+
+for i in range(len(身高)):
+    真实 = 体重[i]
+    猜测 = round(预测(身高[i]), 1)
+    print("身高", 身高[i], "真实体重", 真实, "预测", 猜测)</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>关键概念：训练 vs 推理</h3>
+      <div class="card">
+        <p><b>训练（Training）</b>：拿着数据反复调整参数，很慢，可能要几小时几天。通常在部署前进行，也可能在新数据到来后重新训练。</p>
+        <p><b>推理（Inference）</b>：参数固定后，拿新数据算结果，很快，几毫秒。天天用。</p>
+        <p>就像<b>学开车</b>（训练，慢）和<b>开车上班</b>（推理，快）。</p>
+      </div>
+      <div class="selfcheck sc" data-answer="1" data-explain="监督学习需要「输入→标准答案」的配对数据；强化学习只有奖励信号，没有标准答案。">
+        <p class="sc-q">&#128221; 本节自测：监督学习和强化学习的主要区别？</p>
+        <label><input type="radio" name="sc-ml" value="0"> 监督学习更快</label>
+        <label><input type="radio" name="sc-ml" value="1"> 监督学习有"标准答案"数据，强化学习只有奖励信号</label>
+        <label><input type="radio" name="sc-ml" value="2"> 没有区别</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="arm" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 4 节</span> 机械臂 · 运动学</h2>
+      <p>机械臂怎么知道手在哪？靠两个核心问题：</p>
+      <ul>
+        <li><b>正解（Forward Kinematics）</b>：我知道每个关节转了多少度 &#8594; 算出末端手的位置</li>
+        <li><b>逆解（Inverse Kinematics）</b>：我想让手去某个位置 &#8594; 反推每个关节该转多少度</li>
+      </ul>
+      <div class="example">
+        <b>&#127804; 人手臂类比</b>
+        <p><b>正解</b>：你闭着眼弯一下胳膊，大脑知道肩、肘各转了多少度，所以能"算"出手掌现在在哪。<br>
+        <b>逆解</b>：你看见桌上有个杯子，大脑自动算出"肩转 20 度、肘弯 45 度"，才能把手伸到杯子那里。快到你感觉不到。</p>
+      </div>
+      <h3>为什么逆解更难？</h3>
+      <div class="card">
+        <p>正解是<b>唯一确定</b>的：给定关节角度，手的位置只有一个答案。</p>
+        <p>逆解却可能<b>有多个解</b>：手要到这里，可以"肘朝上"也可以"肘朝下"；有时候还<b>无解</b>（目标太远够不到）。所以逆解需要挑一个最合理的解（通常选最省力、最不容易撞到自己的那个）。</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 单连杆正解（最简）</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 一根连杆，长度为 L，转了角度 a
+# 末端位置：x = L*cos(a), y = L*sin(a)
+
+import math
+
+L = 1.0
+角度 = 45
+弧度 = 角度 * math.pi / 180
+
+x = L * math.cos(弧度)
+y = L * math.sin(弧度)
+
+print("连杆长", L, "米, 转了", 角度, "度")
+print("末端位置: x =", round(x, 3), " y =", round(y, 3))
+print("") 
+# 试几个角度看看规律
+for a in range(0, 91, 30):
+    r = a * math.pi / 180
+    print("角度", a, "度 -> x =", round(math.cos(r), 3), " y =", round(math.sin(r), 3))</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>多连杆：一个套一个</h3>
+      <div class="card">
+        <p>真实机械臂有好几根连杆。第二根的起点是<b>第一根的终点</b>，所以要把每一段算出的位置<b>累加</b>起来——这正是"坐标变换"要解决的问题（第 5 节）。</p>
+      </div>
+      <div class="tip">&#128161; <b>URDF</b>（Unified Robot Description Format）：一种描述机器人结构的文件格式。像写配置一样定义机械臂有几根连杆、关节怎么连，程序就能自动算正解/逆解。见 <code>其他资料/urdf实战.docx</code> 和 <code>代码/urdf_learn.7z</code>。</div>
+      <button type="button" class="simulator" onclick="openSim('linkage')">&#127918; 动手：单连杆运动学模拟器</button>
+      <button type="button" class="simulator" onclick="openSim('linkage2')">&#127918; 推导：单连杆几何推导模拟器</button>
+      <button type="button" class="simulator" onclick="openSim('twoLink')">&#127918; 动手：二连杆运动学</button>
+      <button type="button" class="simulator" onclick="openSim('2darm')">&#127918; 挑战：2D 三连杆机械臂正解</button>
+      <button type="button" class="simulator" onclick="openSim('3darm')">&#127918; 进阶：3D 机械臂正解计算</button>
+      <div class="selfcheck sc" data-answer="1" data-explain="正解 = 知道关节角度算出末端在哪；逆解 = 知道目标位置反推关节角度。">
+        <p class="sc-q">&#128221; 本节自测：机械臂「正解」解决什么？</p>
+        <label><input type="radio" name="sc-arm" value="0"> 知道手在哪，反推关节转多少</label>
+        <label><input type="radio" name="sc-arm" value="1"> 知道关节角度，算出手在哪</label>
+        <label><input type="radio" name="sc-arm" value="2"> 让机械臂自动充电</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="coord" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 5 节</span> 坐标变换</h2>
+      <p>摄像头看到的"左边"和机械臂的"左边"不是一回事——因为它们的<strong>参考系</strong>不同。</p>
+      <div class="example">
+        <b>&#127804; 你发微信告诉朋友"我在你左边"</b>
+        <p>如果你们面对面站着，你的"左"刚好是朋友的"右"！得先统一坐标系：以谁为原点、哪个方向是正方向。<br>
+        机械臂同理——摄像头看到的杯子坐标，必须先"变换"到机械臂的坐标系里，机械臂才知道往哪伸。</p>
+      </div>
+      <h3>两种基本变换</h3>
+      <ul>
+        <li><b>平移</b>：把原点挪一挪。比如从"以摄像头为原点"变成"以机械臂底座为原点"。</li>
+        <li><b>旋转</b>：把坐标轴转一转。比如摄像头 Z 轴朝前、机械臂 Z 轴朝上，需要转 90 度。</li>
+      </ul>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 坐标平移</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 摄像头看到杯子在 (30, 50)（以摄像头为原点）
+# 摄像头装在机械臂底座前方 (100, 0)
+# 杯子在机械臂坐标系 = 杯子坐标 + 摄像头偏移
+
+杯子_摄像头 = [30, 50]
+摄像头偏移 = [100, 0]
+
+杯子_机械臂 = [
+    杯子_摄像头[0] + 摄像头偏移[0],
+    杯子_摄像头[1] + 摄像头偏移[1]
+]
+
+print("摄像头看到杯子在:", 杯子_摄像头)
+print("摄像头装在底座前方:", 摄像头偏移)
+print("杯子在机械臂坐标系下:", 杯子_机械臂)</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 坐标旋转</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 把坐标轴逆时针转 90 度
+# 旋转公式: 新x = -y,  新y = x
+
+def 旋转90(p):
+    return [-p[1], p[0]]
+
+点 = [3, 1]
+新点 = 旋转90(点)
+print("原始:", 点, " 旋转90度后:", 新点)
+
+# 转 4 次就回到原点，验证一下
+p = [3, 1]
+for i in range(4):
+    p = 旋转90(p)
+    print("转", (i+1)*90, "度:", p)</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <div class="tip">&#128161; <b>核心思想</b>：先平移、再旋转（或反过来，顺序很重要！），就能把任何坐标系里的点搬到另一个坐标系里。机械臂的运动学，本质就是一连串这样的变换。</div>
+      <button type="button" class="simulator" onclick="openSim('transform')">&#127918; 观察：旋转与平移</button>
+      <button type="button" class="simulator" onclick="openSim('matrix')">&#127918; 动手：旋转矩阵和平移矩阵</button>
+      <button type="button" class="simulator" onclick="openSim('coord')">&#127918; 进阶：坐标变换与矢量叠加</button>
+      <div class="selfcheck sc" data-answer="0" data-explain="摄像头和机械臂的坐标系不同，需要平移+旋转变换才能对齐。">
+        <p class="sc-q">&#128221; 本节自测：摄像头看到的坐标，为什么不能直接给机械臂用？</p>
+        <label><input type="radio" name="sc-coord" value="0"> 两边的坐标系不一样，需要平移+旋转变换</label>
+        <label><input type="radio" name="sc-coord" value="1"> 摄像头的数字不准</label>
+        <label><input type="radio" name="sc-coord" value="2"> 机械臂看不懂中文</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+    <section id="control" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 6 节</span> 控制稳定 · PID 调节器</h2>
+      <p>想象开下坡的车：如果只知道"当前离目标差多远"，很容易刹车太猛、来回晃。PID 就是一个<strong>聪明的驾驶助手</strong>：</p>
+      <ul>
+        <li><b>P</b>（比例）：看"<u>现在</u>"误差多大 &#8594; 立刻用力修正</li>
+        <li><b>I</b>（积分）：看"<u>过去</u>"误差累积 &#8594; 把一直存在的小偏差磨平</li>
+        <li><b>D</b>（微分）：看"<u>未来</u>"误差变化趋势 &#8594; 提前刹车防抖动</li>
+      </ul>
+      <div class="card">
+        <b>公式</b>
+        <pre><code>输出 = Kp*误差 + Ki*累积误差 + Kd*(误差变化率)</code></pre>
+        <p>公式不用背，记住"现在 / 过去 / 未来"三个词就够了。</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; PID 核心逻辑（看它一步步逼近目标）</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># PID 控制器
+Kp = 0.5
+Ki = 0.1
+Kd = 0.2
+
+目标 = 100
+位置 = 0
+累积 = 0
+上次误差 = 0
+
+for t in range(12):
+    误差 = 目标 - 位置
+    累积 = 累积 + 误差
+    变化 = 误差 - 上次误差
+    
+    输出 = Kp*误差 + Ki*累积 + Kd*变化
+    位置 = 位置 + 输出
+    
+    行 = "第" + str(t+1) + "步: 位置=" + str(round(位置,1))
+    行 = 行 + " 误差=" + str(round(误差,1))
+    print(行)
+    上次误差 = 误差
+
+print("") 
+print("看！位置从 0 一步步逼近目标 100")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>为什么三个都要有？</h3>
+      <div class="card">
+        <p><b>只有 P</b>：会来回震荡，像新手开车一脚油门一脚刹车。</p>
+        <p><b>只有 P+I</b>：不震了，但慢慢偏一点，回不来（比如一直往左飘）。</p>
+        <p><b>P+I+D</b>：稳、准、快。D 会"预判"即将过冲，提前减速。</p>
+      </div>
+      <button type="button" class="simulator" onclick="openSim('pid')">&#127918; 动手：PID 控制无人机悬停</button>
+      <div class="selfcheck sc" data-answer="1" data-explain="P 看「现在」误差；I 看「过去」累积；D 看「未来」变化趋势。">
+        <p class="sc-q">&#128221; 本节自测：PID 里的「P」看的是？</p>
+        <label><input type="radio" name="sc-control" value="0"> 过去的累计误差</label>
+        <label><input type="radio" name="sc-control" value="1"> 现在的误差有多大</label>
+        <label><input type="radio" name="sc-control" value="2"> 未来的天气</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="brain" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 7 节</span> 大脑 · 大模型本地部署</h2>
+      <p>让机器会"想"，最常用的办法是给它接一个大模型当大脑。用 <b>Ollama</b> 就能在你自己电脑里跑一个，不用联网、数据不外传。</p>
+      <div class="example">
+        <b>&#127804; 本地 vs 云端</b>
+        <p><b>云端大模型</b>（如各种在线服务）：把问题发到别人的服务器，算完发回来。方便，但你的数据离开了你的电脑。<br>
+        <b>本地大模型</b>（Ollama）：模型下载到你电脑上跑。慢一点、小一点，但数据完全不出门。</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 调用本地大模型（Ollama）</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># Ollama 本地大模型工作流程
+
+print("1. 去 ollama.com 下载安装")
+print("2. 命令行下载模型:")
+print("   ollama pull qwen2:0.5b")
+print("3. Python 调用:")
+print("   import ollama")
+print("   r = ollama.chat(model='qwen2:0.5b',")
+print("     messages=[{'role':'user',")
+print("       'content':'解释具身智能'}])")
+print("   print(r['message']['content'])")
+print("4. 模型在你电脑上跑，数据不外传")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>大模型在机器人里干什么？</h3>
+      <div class="card">
+        <p>大模型不会直接控制电机。它的工作是<b>理解你的意图</b>，然后把任务拆成具体步骤。</p>
+        <p>你说："把桌上的杯子拿给我"<br>
+        大模型想："这是一个抓取任务 &#8594; 需要先找到杯子 &#8594; 再规划路径 &#8594; 再执行抓取"<br>
+        然后把指令交给下游的视觉模块和运动控制模块去执行。</p>
+      </div>
+      <p>&#128196; 完整教程：<code>课程ppt/Python调用Ollama平台本地部署QWen大模型API实现聊天机器人.md</code></p>
+      <div class="selfcheck sc" data-answer="0" data-explain="本地部署最大的好处是数据不出自己的电脑、不依赖网络，隐私更安全。">
+        <p class="sc-q">&#128221; 本节自测：用 Ollama 本地跑大模型，最主要的好处是？</p>
+        <label><input type="radio" name="sc-brain" value="0"> 数据隐私更安全，无网络依赖</label>
+        <label><input type="radio" name="sc-brain" value="1"> 算得更快</label>
+        <label><input type="radio" name="sc-brain" value="2"> 免费送手机</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="sound" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 8 节</span> 耳朵嘴巴 · 听和说</h2>
+      <p>光会「看」还不够，真正像人的机器人还得会<b>听（ASR）</b>和<b>说（TTS）</b>。这两个缩写拆开就懂了：</p>
+      <ul>
+        <li>&#128483; <b>ASR（Automatic Speech Recognition）</b>：把人说的话，变成文字。</li>
+        <li>&#128266; <b>TTS（Text To Speech）</b>：把文字，变成人声播放出来。</li>
+      </ul>
+      <div class="example">
+        <b>&#127804; 天天都在用</b>
+        <p>你按住微信说话，它自动转成文字——这就是 <b>ASR</b>。<br>
+        导航 App 把"前方 200 米右转"念出来——这就是 <b>TTS</b>。</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; ASR + TTS 完整流程</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code>print("一个完整的语音交互闭环：")
+print("")
+print("你说: 「帮我把水杯拿来」")
+print("   | ASR 语音识别")
+print("   v")
+print("文字: 「帮我把水杯拿来」")
+print("   | 大模型理解意图")
+print("   v")
+print("指令: 导航到水杯 -> 机械臂抓取")
+print("   | TTS 语音合成")
+print("   v")
+print("机器人说: 「好的，正在拿水杯」")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>为什么这两个常一起出现？</h3>
+      <div class="card">
+        <p>因为它们构成<b>语音交互闭环</b>：<br>
+        用户说话 &#8594; ASR 转文字 &#8594; 大模型理解 &#8594; 生成回复 &#8594; TTS 转语音 &#8594; 用户听到。<br>
+        少了任何一个，机器人都没法用"说话"跟你交流。</p>
+      </div>
+      <p>&#128194; 相关代码：<code>代码/asr和tts.zip</code>（内含 audio/ 示例）</p>
+      <div class="selfcheck sc" data-answer="0" data-explain="ASR = 语音→文字（Automatic Speech Recognition）；TTS = 文字→语音（Text To Speech）。">
+        <p class="sc-q">&#128221; 本节自测：ASR 的功能是？</p>
+        <label><input type="radio" name="sc-sound" value="0"> 把人说的话变成文字</label>
+        <label><input type="radio" name="sc-sound" value="1"> 把文字变成语音播放</label>
+        <label><input type="radio" name="sc-sound" value="2"> 让机器人学会唱歌</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+    <section id="connect" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 9 节</span> 沟通 · 通讯与 MCP</h2>
+      <p>机器人的各个"器官"需要互相说话：摄像头 &#8594; 大脑、大脑 &#8594; 电机、电机 &#8594; 大脑反馈。这就是<b>通讯</b>。</p>
+      <h3>两种关键技术</h3>
+      <div class="card">
+        <p><b>WebSocket</b>：双向实时对话，像打电话——两边可以随时发消息，不用等对方先问。适合需要"持续对话"的场景（机器人不断上报状态、不断接收指令）。</p>
+        <p><b>MCP（Model Context Protocol）</b>：一套标准接口，让大模型能安全地调用外部工具和数据。比如"大模型，帮我查今天天气" &#8594; MCP 调用天气 API &#8594; 返回结果。</p>
+      </div>
+      <div class="example">
+        <b>&#127804; 机器人内部的一次对话</b>
+        <p>大脑（大模型）&#8594; 通过 MCP &#8594; 调用天气 API，得到"今天晴天"<br>
+        大脑 &#8594; 通过 WebSocket &#8594; 告诉电机控制器，"晴天，去院子扫地"<br>
+        电机 &#8594; 通过 WebSocket &#8594; 回大脑，"已到达院子，开始扫地"</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 通讯协议对比</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code>print("HTTP vs WebSocket:")
+print("")
+print("HTTP: 客户端发请求，服务器返回响应；连接可以复用")
+print("  适合: 查天气、看网页")
+print("  不适合: 机器人实时控制")
+print("")
+print("WebSocket: 连上后一直保持，双向随时发")
+print("  适合: 实时控制、状态上报")
+print("")
+print("MCP: 大模型调用外部工具的协议")
+print("  大模型 -> MCP -> 天气API -> 返回结果")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <p>&#128194; 代码：<code>代码/code-websockt通讯完成版本.zip</code>、<code>代码/大模型mcp和行为克隆.zip</code>（<code>code/mcp/</code>）</p>
+      <button type="button" class="simulator" onclick="openSim('uart')">&#127918; 动手：UART 通讯波形</button>
+      <div class="selfcheck sc" data-answer="1" data-explain="MCP 是一套标准协议，让大模型可以安全地调用外部工具和 API。">
+        <p class="sc-q">&#128221; 本节自测：MCP 的作用是？</p>
+        <label><input type="radio" name="sc-connect" value="0"> 控制电机转速</label>
+        <label><input type="radio" name="sc-connect" value="1"> 标准接口，让大模型调用外部工具和数据</label>
+        <label><input type="radio" name="sc-connect" value="2"> 给机械臂充电</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="learn" class="module">
+      <div class="lock-overlay">&#128274; 学完上一节并答对自测后解锁</div>
+      <h2><span class="ch">第 10 节</span> 机器怎么学习？</h2>
+      <p>机器不是天生会做，它是"学"出来的。两种主流方法：</p>
+      <ul>
+        <li>&#129436; <strong>模仿学习</strong>：看老师演示一遍，照着学。比如你亲手拖一遍机械臂，它记住动作再复现（课程里的 ALOHA 双臂机器人就是这么练的）。</li>
+        <li>&#127918; <strong>强化学习</strong>：做对了给奖励、做错了扣分，越练越聪明（像游戏 AI）。</li>
+      </ul>
+      <div class="card">
+        <b>打个比方</b>
+        <p>模仿学习 = "看老师写字，然后临摹"<br>
+        强化学习 = "考试分高就奖、分低就罚，逼自己进步"</p>
+      </div>
+      <div class="code-demo">
+        <div class="code-bar"><span>&#128196; 两种学习方式的代码思路</span><button class="btn-copy" onclick="copyCode(this)">&#9112; 复制</button></div>
+        <pre><code># 模仿学习（Behavior Cloning）
+print("=== 模仿学习 ===")
+演示数据 = ["张开手", "靠近杯子", "合上", "抬起"]
+for 步骤 in 演示数据:
+    print("学习人类动作:", 步骤)
+print("训练完成，可以复现了")
+print("")
+# 强化学习
+print("=== 强化学习 ===")
+总分 = 0
+for 尝试 in range(5):
+    得分 = (尝试 + 1) * 20
+    总分 = 总分 + 得分
+    print("第", 尝试+1, "次尝试, 得分:", 得分, " 累计:", 总分)
+print("越练越聪明！")</code></pre>
+        <button class="btn-run" onclick="runCode(this)">&#9654; 运行看看</button>
+        <div class="code-output"></div>
+      </div>
+      <h3>为什么要两种都用？</h3>
+      <div class="card">
+        <p><b>模仿学习</b>起步快——人类演示几十次，机器就能大致学会。但它只能学到演示过的动作，遇到新情况就懵。</p>
+        <p><b>强化学习</b>能超越人类——自己试几万次，可能发现比人更优的动作。但试错成本高，在真机上可能摔坏设备。</p>
+        <p>所以常见做法：<b>模仿学习打底 + 强化学习打磨</b>。</p>
+      </div>
+      <p>&#128194; 视频：<code>其他资料/mobile-aloha.mp4</code>（模仿学习实战）</p>
+      <button type="button" class="simulator" onclick="openSim('stepper')">&#127918; 动手：步进电机</button>
+      <button type="button" class="simulator" onclick="openSim('motor')">&#127918; 动手：六步换向无刷电机</button>
+      <div class="selfcheck sc" data-answer="1" data-explain="「看老师演示后复现」正是模仿学习；靠奖励惩罚自己试出来的是强化学习。">
+        <p class="sc-q">&#128221; 本节自测：看人类老师演示一遍再复现，属于？</p>
+        <label><input type="radio" name="sc-learn" value="0"> 强化学习</label>
+        <label><input type="radio" name="sc-learn" value="1"> 模仿学习</label>
+        <label><input type="radio" name="sc-learn" value="2"> 都不属于</label>
+        <button class="btn btn-sm" onclick="checkSC(this)">检查</button>
+        <p class="sc-feedback"></p>
+      </div>
+      <button class="done-btn" onclick="markDone(this)">&#10003; 我已学完这节</button>
+    </section>
+
+
+    <section id="lab" class="module lab-module"><span class="eyebrow">先预测，再动手验证</span><h2>互动实验室</h2><p>13 个实验，随时探索。每个实验都有参数控制和对应课程。</p><div class="filter-bar" id="labFilters" role="group" aria-label="实验分类"><button class="filter-chip" data-filter="全部" aria-pressed="true" onclick="filterLab(this)">全部</button><button class="filter-chip" data-filter="视觉" aria-pressed="false" onclick="filterLab(this)">视觉</button><button class="filter-chip" data-filter="运动学" aria-pressed="false" onclick="filterLab(this)">运动学</button><button class="filter-chip" data-filter="坐标" aria-pressed="false" onclick="filterLab(this)">坐标</button><button class="filter-chip" data-filter="控制" aria-pressed="false" onclick="filterLab(this)">控制</button><button class="filter-chip" data-filter="通讯" aria-pressed="false" onclick="filterLab(this)">通讯</button></div><div class="lab-grid" id="labGrid"></div></section>
+    <section id="resources" class="module"><span class="eyebrow">课件、代码与演示</span><h2>资料库</h2><p>打开课件，下载项目，或观看演示视频。压缩包请解压后使用；较大的文件会标注大小。</p><div class="resource-filters"><label class="search-label" for="resourceSearch">搜索资料<input id="resourceSearch" type="search" placeholder="例如：运动学、PID、OpenCV" oninput="renderResources()"></label><label for="resourceType">资料类型<select id="resourceType" onchange="renderResources()"><option>全部</option><option>课件</option><option>代码</option><option>视频</option><option>软件</option><option>文档</option></select></label></div><p id="resourceCount" class="report-hint" role="status"></p><div id="resourceList" class="resource-list"></div></section>
+
+    <section id="quiz-panel" class="module">
+      <h2>&#127919; 结业小测验（3 道，考核心）</h2>
+      <p>学完所有节后，来做最后的检验。满分会让你的学习报告变成「已完成」。</p>
+      <div class="q">
+        <p><b>Q1.</b> 具身智能机器人的工作流程是？</p>
+        <label><input type="radio" name="q1" value="0"> 看 &#8594; 想 &#8594; 动</label>
+        <label><input type="radio" name="q1" value="1"> 动 &#8594; 想 &#8594; 看</label>
+        <label><input type="radio" name="q1" value="2"> 想 &#8594; 动 &#8594; 看</label>
+      </div>
+      <div class="q">
+        <p><b>Q2.</b> 机械臂「正解」解决的问题是？</p>
+        <label><input type="radio" name="q2" value="0"> 知道手在哪，反推关节角度</label>
+        <label><input type="radio" name="q2" value="1"> 知道每个关节角度，算出手在哪</label>
+        <label><input type="radio" name="q2" value="2"> 让机械臂自动充电</label>
+      </div>
+      <div class="q">
+        <p><b>Q3.</b> PID 里的「P」看的是？</p>
+        <label><input type="radio" name="q3" value="0"> 过去的累计误差</label>
+        <label><input type="radio" name="q3" value="1"> 现在的误差有多大</label>
+        <label><input type="radio" name="q3" value="2"> 未来的天气</label>
+      </div>
+      <button class="btn" onclick="checkQuiz()">提交答案</button>
+      <div id="quizResult"></div>
+    </section>
+
+    <nav id="lessonNav" class="lesson-nav" aria-label="相邻课程" hidden></nav>
+    <footer><p>具身智能学习系统 · 14 节课程 / 13 个实验</p><p>可双击 index.html 离线学习 · 进度保存在当前浏览器，支持导入与导出</p></footer>
+  </main>
+  <div id="appStatus" class="app-status" role="status" aria-live="polite"></div>
+  <div id="simModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="simTitle">
+    <div class="modal-box"><div class="modal-toolbar"><strong id="simTitle">互动实验</strong><a id="simStandalone" href="#" target="_blank" rel="noopener">独立打开 ↗</a><button class="modal-close" onclick="closeSim()" aria-label="关闭实验">×</button></div><iframe id="simFrame" class="sim" src="about:blank" title="互动实验"></iframe></div>
+  </div>
+  <script src="js/resources.js?v=4"></script><script src="js/demo-runtime.js?v=4"></script><script src="js/app.js?v=4"></script>
+</body>
+</html>

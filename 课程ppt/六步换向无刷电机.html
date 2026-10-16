@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三相无刷电机(BLDC)交互式模拟器</title>
+    <style>
+        /* --- 全局与布局 --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .panel {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        /* --- 模拟器面板 (左侧) --- */
+        .simulator-panel {
+            width: 360px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1, h2 {
+            text-align: center;
+            margin-top: 0;
+            color: #0056b3;
+        }
+        h2 { font-size: 1.2em; margin-bottom: 20px; }
+
+        /* --- 电机可视化 --- */
+        #motor-visualization {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin-bottom: 20px;
+        }
+        #stator {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-sizing: border-box;
+        }
+        .coil {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 3px solid #888;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.5em;
+            color: #555;
+            background-color: #d1d1d1;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+        }
+        /* 线圈位置 (0, 120, 240度) */
+        #coil-u { top: 0; left: 50%; transform: translate(-50%, -50%); }
+        #coil-v { bottom: 7.3%; left: 7.3%; transform: translate(0, 0); }
+        #coil-w { bottom: 7.3%; right: 7.3%; transform: translate(0, 0); }
+
+        /* 线圈通电状态颜色 */
+        .coil.positive { background-color: #e74c3c; border-color: #c0392b; color: white; } /* 红色: N极 */
+        .coil.negative { background-color: #3498db; border-color: #2980b9; color: white; } /* 蓝色: S极 */
+
+        /* 霍尔传感器 */
+        .hall-sensor {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #bdc3c7;
+            border: 2px solid #7f8c8d;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
+            display: flex; justify-content: center; align-items: center;
+            transition: background-color 0.2s;
+        }
+        .hall-sensor.active { background-color: #f1c40f; } /* 黄色: 激活 */
+        /* 传感器位置 (60, 180, 300度) */
+        #hall-1 { top: 13.4%; right: 0; transform: translate(50%, -50%); }
+        #hall-2 { bottom: 0; left: 50%; transform: translate(-50%, 50%); }
+        #hall-3 { top: 13.4%; left: 0; transform: translate(-50%, -50%); }
+
+
+        #rotor {
+            position: absolute;
+            width: 40%;
+            height: 40%;
+            top: 30%;
+            left: 30%;
+            background: linear-gradient(to bottom, #d9534f 50%, #428bca 50%);
+            border-radius: 50%;
+            border: 3px solid #2c3e50;
+            transition: transform 0.2s linear; /* 使用 linear 保证匀速感 */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            font-weight: bold;
+            color: white;
+            font-size: 1.5em;
+        }
+
+        /* --- 控制器 --- */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+        }
+        .controls button, .controls .speed-control { padding: 10px; font-size: 1em; border-radius: 5px; border: 1px solid #ccc; cursor: pointer; transition: background-color 0.2s; }
+        .controls button:hover { background-color: #e9e9e9; }
+        #run-stop-btn.running { background-color: #e74c3c; color: white; border-color: #c0392b; }
+        .speed-control { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+        #speed-slider { width: 100%; }
+
+        /* --- 信息面板 (右侧) --- */
+        .info-panel {
+            width: 450px;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+        #status-display {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 5px solid #007bff;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1.6;
+        }
+        .commutation-table { width: 100%; border-collapse: collapse; text-align: center; }
+        .commutation-table th, .commutation-table td { border: 1px solid #ddd; padding: 8px; }
+        .commutation-table th { background-color: #f2f2f2; }
+        .commutation-table tr.highlight { background-color: #fff3cd; font-weight: bold; }
+        .explanation { line-height: 1.6; font-size: 0.9em; }
+        .explanation strong { color: #0056b3; }
+        .state-pos { color: #c0392b; font-weight: bold; } /* + */
+        .state-neg { color: #2980b9; font-weight: bold; } /* - */
+        .state-off { color: #95a5a6; } /* O */
+    </style>
+<link rel="stylesheet" href="./simulator-common.css?v=4">
+</head>
+<body class="sim-motor" data-simulator="motor">
+
+    <div class="container">
+        <!-- 左侧：模拟器和控制器 -->
+        <div class="panel simulator-panel">
+            <h1>三相无刷电机(BLDC)模拟器</h1>
+            <div id="motor-visualization">
+                <div id="stator">
+                    <div class="coil" id="coil-u">U</div>
+                    <div class="coil" id="coil-v">V</div>
+                    <div class="coil" id="coil-w">W</div>
+                    <div class="hall-sensor" id="hall-1">H1</div>
+                    <div class="hall-sensor" id="hall-2">H2</div>
+                    <div class="hall-sensor" id="hall-3">H3</div>
+                </div>
+                <div id="rotor"><span>N</span><span>S</span></div>
+            </div>
+            <div class="controls">
+                <button id="reset-btn">重置</button>
+                <button id="step-forward">单步换向 ▶</button>
+                <button id="run-stop-btn" style="grid-column: 1 / -1;">运行</button>
+                <div class="speed-control">
+                    <label for="speed-slider">速度:</label>
+                    <input type="range" id="speed-slider" min="50" max="500" value="200" step="10">
+                    <span id="speed-value">200ms</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：状态和原理 -->
+        <div class="panel info-panel">
+            <h2>工作状态与原理</h2>
+            <div id="status-display"></div>
+            <div id="commutation-table-container">
+                <h2>6步换向序列表</h2>
+                <table class="commutation-table" id="commutation-table">
+                    <!-- 表格将由JS动态生成 -->
+                </table>
+            </div>
+            <div class="explanation">
+                <h2>基本原理: 电子换向</h2>
+                <p>无刷电机(BLDC)使用电子控制器替代了传统的电刷。控制器根据<strong>霍尔传感器(H1, H2, H3)</strong>检测到的转子位置，按顺序给三相线圈(U, V, W)通电，形成一个旋转的磁场，从而“拉动”转子连续旋转。</p>
+                <ul>
+                    <li><strong>6步换向法:</strong> 在任意时刻，一个线圈通正向电流(<span class="state-pos">+</span>)，一个通反向电流(<span class="state-neg">-</span>)，另一个不通电(<span class="state-off">O</span>)，共6种组合。</li>
+                    <li><strong>霍尔传感器:</strong> 当转子的磁极经过时，传感器信号会改变(0或1)，告诉控制器何时进行下一步换向。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Elements ---
+        const rotor = document.getElementById('rotor');
+        const coils = {
+            u: document.getElementById('coil-u'),
+            v: document.getElementById('coil-v'),
+            w: document.getElementById('coil-w')
+        };
+        const hallSensors = {
+            h1: document.getElementById('hall-1'),
+            h2: document.getElementById('hall-2'),
+            h3: document.getElementById('hall-3')
+        };
+        const statusDisplay = document.getElementById('status-display');
+        const runStopBtn = document.getElementById('run-stop-btn');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        const commutationTableBody = document.createElement('tbody');
+        document.getElementById('commutation-table').appendChild(commutationTableBody);
+
+        // --- 6-Step Commutation Sequence ---
+        // Defines the logic for each of the 6 steps.
+        // U,V,W: 1 for positive (current in), -1 for negative (current out), 0 for off.
+        // hall: The hall sensor state [H1, H2, H3] that TRIGGERS this commutation step.
+        // targetAngle: The ideal angle the rotor settles at during this step.
+        const commutationSequence = [
+            { step: 1, coils: { u:  1, v: -1, w:  0 }, hall: [1, 0, 1], targetAngle: 30  },
+            { step: 2, coils: { u:  1, v:  0, w: -1 }, hall: [1, 0, 0], targetAngle: 90  },
+            { step: 3, coils: { u:  0, v:  1, w: -1 }, hall: [1, 1, 0], targetAngle: 150 },
+            { step: 4, coils: { u: -1, v:  1, w:  0 }, hall: [0, 1, 0], targetAngle: 210 },
+            { step: 5, coils: { u: -1, v:  0, w:  1 }, hall: [0, 1, 1], targetAngle: 270 },
+            { step: 6, coils: { u:  0, v: -1, w:  1 }, hall: [0, 0, 1], targetAngle: 330 }
+        ];
+
+        // --- State Variables ---
+        let currentStepIndex = 0;
+        let cumulativeAngle = commutationSequence[0].targetAngle;
+        let isRunning = false;
+        let intervalId = null;
+        let speed = 200; // ms per step
+
+        // --- Core Functions ---
+
+        /**
+         * Simulates Hall sensor readings based on the rotor's angle.
+         * Sensor placement: H1@300-120, H2@60-240, H3@180-360(0)
+         * This is a simplified model.
+         */
+        function getHallState(angle) {
+            const normalizedAngle = (angle % 360 + 360) % 360; // Ensure angle is 0-359
+            const h1 = (normalizedAngle >= 120 && normalizedAngle < 300) ? 0 : 1;
+            const h2 = (normalizedAngle >= 240 || normalizedAngle < 60) ? 0 : 1;
+            const h3 = (normalizedAngle >= 0 && normalizedAngle < 180) ? 0 : 1;
+            return [h1, h2, h3];
+        }
+
+        /**
+         * Updates all UI elements based on the current state.
+         */
+        function updateUI() {
+            const currentStep = commutationSequence[currentStepIndex];
+
+            // 1. Update Rotor Angle
+            rotor.style.transform = `rotate(${cumulativeAngle}deg)`;
+
+            // 2. Update Coil States (Colors)
+            Object.keys(coils).forEach(key => {
+                const state = currentStep.coils[key];
+                coils[key].classList.remove('positive', 'negative');
+                if (state === 1) coils[key].classList.add('positive');
+                else if (state === -1) coils[key].classList.add('negative');
+            });
+            
+            // 3. Update Hall Sensor Indicators
+            const hallState = getHallState(cumulativeAngle);
+            hallSensors.h1.classList.toggle('active', hallState[0] === 1);
+            hallSensors.h2.classList.toggle('active', hallState[1] === 1);
+            hallSensors.h3.classList.toggle('active', hallState[2] === 1);
+
+            // 4. Update Status Display Panel
+            statusDisplay.innerHTML = `
+                当前换向步: ${currentStep.step} / 6<br>
+                转子角度: ${Math.round(cumulativeAngle % 360)}°<br>
+                线圈状态: U:${currentStep.coils.u}, V:${currentStep.coils.v}, W:${currentStep.coils.w}<br>
+                霍尔信号(H1,H2,H3): [${hallState.join(', ')}]<br>
+                触发下一换向的信号: [${commutationSequence[(currentStepIndex + 1) % 6].hall.join(', ')}]
+            `;
+
+            // 5. Highlight current step in the table
+            const tableRows = commutationTableBody.querySelectorAll('tr');
+            tableRows.forEach((row, index) => {
+                row.classList.toggle('highlight', index === currentStepIndex);
+            });
+        }
+
+        /**
+         * Generates the commutation table for display.
+         */
+        function generateCommutationTable() {
+            // Create Header
+            const table = document.getElementById('commutation-table');
+            const thead = table.createTHead();
+            const headerRow = thead.insertRow();
+            ['步', 'U', 'V', 'W', 'H1', 'H2', 'H3', '角度°'].forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            
+            // Create Body
+            commutationSequence.forEach(step => {
+                const row = commutationTableBody.insertRow();
+                row.insertCell().textContent = step.step;
+                ['u', 'v', 'w'].forEach(coilKey => {
+                    const cell = row.insertCell();
+                    const state = step.coils[coilKey];
+                    if(state === 1) cell.innerHTML = `<span class="state-pos">+</span>`;
+                    else if(state === -1) cell.innerHTML = `<span class="state-neg">-</span>`;
+                    else cell.innerHTML = `<span class="state-off">O</span>`;
+                });
+                step.hall.forEach(hallState => row.insertCell().textContent = hallState);
+                row.insertCell().textContent = step.targetAngle;
+            });
+        }
+
+        /**
+         * Executes one commutation step forward.
+         */
+        function step() {
+            currentStepIndex = (currentStepIndex + 1) % 6;
+            const angleChange = 60; // 360 degrees / 6 steps
+            cumulativeAngle += angleChange;
+            updateUI();
+        }
+
+        /**
+         * Starts or stops the automatic rotation.
+         */
+        function toggleRun() {
+            isRunning = !isRunning;
+            if (isRunning) {
+                runStopBtn.textContent = '停止';
+                runStopBtn.classList.add('running');
+                // Immediately step to avoid delay, then set interval
+                step();
+                intervalId = setInterval(step, speed);
+                document.getElementById('step-forward').disabled = true;
+            } else {
+                clearInterval(intervalId);
+                intervalId = null;
+                runStopBtn.textContent = '运行';
+                runStopBtn.classList.remove('running');
+                document.getElementById('step-forward').disabled = false;
+            }
+        }
+
+        /**
+         * Resets the simulator to its initial state.
+         */
+        function reset() {
+            if (isRunning) toggleRun(); // Stop if running
+            currentStepIndex = 0;
+            cumulativeAngle = commutationSequence[0].targetAngle;
+            updateUI();
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('reset-btn').addEventListener('click', reset);
+        document.getElementById('step-forward').addEventListener('click', step);
+        runStopBtn.addEventListener('click', toggleRun);
+
+        speedSlider.addEventListener('input', (e) => {
+            speed = 550 - parseInt(e.target.value); // Invert for intuitive control
+            speedValue.textContent = `${speed}ms`;
+            if (isRunning) {
+                clearInterval(intervalId);
+                intervalId = setInterval(step, speed);
+            }
+        });
+
+        // --- Initialization ---
+        speedSlider.value = 550 - speed;
+        speedValue.textContent = `${speed}ms`;
+        generateCommutationTable();
+        reset();
+    });
+    </script>
+<script src="./simulator-common.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PID 可视化模拟器 · 目标高度控制</title>
+    <script src="./chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .container {
+            display: flex;
+            width: 95%;
+            max-width: 1200px;
+            gap: 20px;
+        }
+        .controls {
+            flex: 1;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .chart-container {
+            flex: 3;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        .value-display {
+            font-weight: bold;
+            color: #3498db;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #2ecc71;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #27ae60;
+        }
+    </style>
+<link rel="stylesheet" href="./simulator-common.css?v=4">
+</head>
+<body class="sim-pid" data-simulator="pid">
+    <h1>PID 可视化模拟器：目标高度控制</h1>
+
+    <div class="container">
+        <div class="controls">
+            <h2>控制参数</h2>
+            
+            <div class="slider-group">
+                <label for="kp">Kp (比例): <span id="kp-value" class="value-display">1.0</span></label>
+                <input type="range" id="kp" min="0" max="10" value="1" step="0.1">
+            </div>
+            
+            <div class="slider-group">
+                <label for="ki">Ki (积分): <span id="ki-value" class="value-display">0</span></label>
+                <input type="range" id="ki" min="0" max="2" value="0" step="0.01">
+            </div>
+
+            <div class="slider-group">
+                <label for="kd">Kd (微分): <span id="kd-value" class="value-display">0</span></label>
+                <input type="range" id="kd" min="0" max="20" value="0" step="0.1">
+            </div>
+
+            <div class="slider-group"><label for="target">目标高度：<span id="target-value">50</span> m</label><input type="range" id="target" min="20" max="80" value="50" step="1"></div>
+            <label style="font-size:12px;font-weight:400"><input type="checkbox" id="disturbance"> 持续向下扰动（1 N）</label>
+            <div class="sim-presets"><button type="button" data-preset="p">P</button><button type="button" data-preset="pi">PI</button><button type="button" data-preset="pid">PID</button></div>
+            <button id="reset-button">开始模拟</button><p style="font-size:11px;color:#596c85">模型包含重力补偿、空气阻尼与推力上限。启用扰动后，比较积分项如何减小稳态误差。</p>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="pidChart" role="img" aria-label="实际高度与目标高度随时间变化的曲线"></canvas>
+        </div>
+    </div>
+
+    <div class="pid-metrics" id="pidMetrics" role="status" aria-live="polite"></div>
+    <script>
+        // --- DOM Elements ---
+        const kpSlider = document.getElementById('kp');
+        const kiSlider = document.getElementById('ki');
+        const kdSlider = document.getElementById('kd');
+        const kpValueSpan = document.getElementById('kp-value');
+        const kiValueSpan = document.getElementById('ki-value');
+        const kdValueSpan = document.getElementById('kd-value');
+        const resetButton = document.getElementById('reset-button');
+        const ctx = document.getElementById('pidChart').getContext('2d');
+
+        // --- Simulation Constants ---
+        let SETPOINT = 50.0; // 目标高度
+        const INITIAL_HEIGHT = 100.0; // 初始高度
+        const DT = 0.02; // 时间步长 (s)
+        const SIMULATION_TIME = 20; // 模拟总时长 (s)
+
+        // --- PID Controller Class ---
+        class PIDController {
+            constructor(kp, ki, kd) {
+                this.kp = kp;
+                this.ki = ki;
+                this.kd = kd;
+                this.reset();
+            }
+
+            reset() {
+                this.integral = 0;
+                this.previousError = null;
+            }
+
+            update(error) {
+                // Proportional term
+                const pTerm = this.kp * error;
+
+                // Integral term
+                this.integral = Math.max(-20, Math.min(20, this.integral + error * DT));
+                const iTerm = this.ki * this.integral;
+
+                // Derivative term
+                const derivative = this.previousError === null ? 0 : (error - this.previousError) / DT;
+                const dTerm = this.kd * derivative;
+
+                this.previousError = error;
+
+                return pTerm + iTerm + dTerm;
+            }
+        }
+
+        // --- Drone Physics Model ---
+        class Drone {
+            constructor() {
+                this.mass = 1.0; // kg
+                this.gravity = 9.81; // m/s^2
+                this.damping = 0.5; // 空气阻尼
+                this.reset();
+            }
+
+            reset() {
+                this.position = INITIAL_HEIGHT;
+                this.velocity = 0;
+            }
+
+            update(controlForce) {
+                const thrust = Math.max(0, Math.min(30, this.mass * this.gravity + controlForce));
+                const disturbance = document.getElementById("disturbance").checked ? 1 : 0;
+                const netForce = thrust - this.mass * this.gravity - this.damping * this.velocity - disturbance;
+                const acceleration = netForce / this.mass;
+                this.velocity += acceleration * DT;
+                this.position += this.velocity * DT;
+
+                // 防止无人机掉到地底下
+                if (this.position < 0) {
+                    this.position = 0;
+                    this.velocity = 0;
+                }
+            }
+        }
+
+        // --- Chart.js Setup ---
+        let pidChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: '无人机实际高度',
+                        data: [],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: '目标高度',
+                        data: [],
+                        borderColor: '#e74c3c',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: {
+                animation: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: '时间 (s)' }
+                    },
+                    y: {
+                        title: { display: true, text: '高度 (m)' },
+                        min: 0,
+                        suggestedMax: INITIAL_HEIGHT + 10
+                    }
+                },
+                maintainAspectRatio: false,
+            }
+        });
+        
+        // --- Main Simulation Logic ---
+        let simulationId = null;
+        let drone = new Drone();
+        let pid = new PIDController(parseFloat(kpSlider.value), parseFloat(kiSlider.value), parseFloat(kdSlider.value));
+
+        function runSimulation() {
+            SETPOINT = Number(document.getElementById('target').value);
+            drone.reset(); pid.kp = Number(kpSlider.value); pid.ki = Number(kiSlider.value); pid.kd = Number(kdSlider.value); pid.reset();
+            const labels = [], actual = [], target = [];
+            let minimum = INITIAL_HEIGHT, lastOutside = 0;
+            for (let step = 0; step <= Math.round(SIMULATION_TIME / DT); step++) {
+                const time = step * DT;
+                if (step > 0) drone.update(pid.update(SETPOINT - drone.position));
+                minimum = Math.min(minimum, drone.position);
+                if (Math.abs(drone.position - SETPOINT) > Math.max(1, SETPOINT * 0.02)) lastOutside = time;
+                if (step % 5 === 0) { labels.push(time.toFixed(1)); actual.push(drone.position); target.push(SETPOINT); }
+            }
+            pidChart.data.labels = labels; pidChart.data.datasets[0].data = actual; pidChart.data.datasets[1].data = target; pidChart.update();
+            document.getElementById('pidMetrics').innerHTML = '<span>最终高度 <b>' + drone.position.toFixed(2) + ' m</b></span><span>最终误差 <b>' + (SETPOINT - drone.position).toFixed(2) + ' m</b></span><span>低于目标最大幅度 <b>' + Math.max(0, SETPOINT - minimum).toFixed(2) + ' m</b></span><span>进入并保持 ±2%（至少 ±1m） <b>' + (lastOutside >= SIMULATION_TIME - DT ? '20s 内未稳定' : (lastOutside + DT).toFixed(1) + ' s') + '</b></span>';
+        }
+
+        // --- Event Listeners ---
+        kpSlider.addEventListener('input', () => kpValueSpan.textContent = parseFloat(kpSlider.value).toFixed(2));
+        kiSlider.addEventListener('input', () => kiValueSpan.textContent = parseFloat(kiSlider.value).toFixed(2));
+        kdSlider.addEventListener('input', () => kdValueSpan.textContent = parseFloat(kdSlider.value).toFixed(2));
+        resetButton.addEventListener('click', runSimulation);
+        
+        const targetSlider = document.getElementById('target');
+        targetSlider.addEventListener('input', () => document.getElementById('target-value').textContent = targetSlider.value);
+        const presets = { p: [1.2,0,0], pi: [1.2,0.15,0], pid: [1.2,0.15,2.4] };
+        document.querySelectorAll('[data-preset]').forEach(button => button.addEventListener('click', () => {
+            [kpSlider,kiSlider,kdSlider].forEach((slider,index) => { slider.value = presets[button.dataset.preset][index]; slider.dispatchEvent(new Event('input')); });
+            runSimulation();
+        }));
+        // Initial run
+        runSimulation();
+
+    </script>
+<script src="./simulator-common.js?v=4"></script>
+</body>
+</html>
